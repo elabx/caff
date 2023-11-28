@@ -1,0 +1,8 @@
+[Mon Sep 18 11:55:00.148861 2023] [authz_core:error] [pid 2848] [client 207.154.240.169:60116] AH01630: client denied by server configuration: /var/www/html/pwcaff/.vscode
+[Mon Sep 18 11:55:01.743100 2023] [authz_core:error] [pid 2888] [client 207.154.240.169:32958] AH01630: client denied by server configuration: /var/www/html/pwcaff/server-status
+[Mon Sep 18 11:55:03.054137 2023] [authz_core:error] [pid 2868] [client 207.154.240.169:33462] AH01630: client denied by server configuration: /var/www/html/pwcaff/.DS_Store
+[Mon Sep 18 11:55:03.306929 2023] [authz_core:error] [pid 2853] [client 207.154.240.169:33614] AH01630: client denied by server configuration: /var/www/html/pwcaff/.env
+[Mon Sep 18 11:55:03.550548 2023] [authz_core:error] [pid 2883] [client 207.154.240.169:33756] AH01630: client denied by server configuration: /var/www/html/pwcaff/.git
+[Mon Sep 18 11:55:14.499609 2023] [authz_core:error] [pid 2865] [client 91.213.50.8:37916] AH01630: client denied by server configuration: /var/www/html/pwcaff/.git
+[Wed Sep 20 01:04:19.828928 2023] [authz_core:error] [pid 11927] [client 180.244.184.25:65163] AH01630: client denied by server configuration: /var/www/html/pwcaff/.git
+[Wed Sep 20 01:04:21.088129 2023] [authz_core:error] [pid 11968] [client 180.244.184.25:58200] AH01630: client denied by server configuration: /var/www/html/pwcaff/.git

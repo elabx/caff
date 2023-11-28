@@ -1,0 +1,87 @@
+Version 1.1.5 - August 2022
+===========================
+- General updates, improvements and fixes
+- Requires ProcessWire 3.0.184 or newer
+
+Version 1.1.4 - May 2022
+========================
+- Minor bug fixes and code improvements
+- Requires ProcessWire 3.0.184 or newer
+
+Version 1.1.3 - August 2019
+===========================
+- Major improvements to filters selection
+- Major improvements to columns selection
+- Support for latest Export CSV action
+- Requires ProcessWire 3.0.137 or newer
+
+Version 1.1.2 - January 2019
+=============================
+- Another maintenance release with various small fixes and optimizations.
+- ProcessWire 3.0.98 or newer recommended
+
+Version 1.1.1 - April 2017
+=============================
+- Maintenance release with fixes, optimizations and various adjustments.
+- ProcessWire 3.x or 2.8.x+ recommended. 
+
+Version 1.1.0 - May 2016
+============================
+- Various minor bug fixes
+- For use with ProcessWire 2.7.2 or 3.0+
+
+Version 1.0.7 - August 2015
+===============================
+- Primary bug fixes and minor improvements
+- For use with ProcessWire 2.6.14+
+
+Version 1.0.6 - August 2015
+==================================
+- Continued tweaks and improvements to inline page editing editing 
+  mode (AJAX). 
+- Some tweaks and optimizations to the ListerPro Config tab. 
+- Requires ProcessWire 2.6.12+
+
+Version 1.0.5 - July 2015
+==================================
+- Fix bug that prevented save of Page reference fields with multiple
+  pages at the same time (for inline page editing). 
+
+Version 1.0.4 - July 2015
+==================================
+- Continued updates to support inline page editing. Also contains
+  some bug fixes. Adds support for editing of "parent" fields. 
+  Expands support for ajax file uploads. Requires PW 2.6.7+. 
+
+Version 1.0.3 - June 2015
+==================================
+- Major update that takes ListerPro from being a page Listing 
+  engine to also being a page Editing engine, with support for
+  inline ajax editable pages in your ListerPro results.
+
+Version 1.0.2 - March 2015
+===================================
+- Add Lister management controls (list, add, clone, delete) to the 
+  ListerPro module configuration screen. 
+
+- Add new "Advanced" config options for dictating the visibility and
+  behavior of sections: Filters, Columns, Actions. 
+
+- Fix bug with actions not processing all result sets that specify 
+  multiple templates. 
+
+- Update total counting to be smarter while still cachable. 
+
+- Add config option under "Advanced" to make it easier to specify
+  whether field names or labels should be shown for Filters/Columns.
+
+- Fix bug where unmodified filters would no longer be shown after 
+  reloading/refreshing Lister page. 
+
+- Add support for responsive Lister table output (add in PW core). 
+
+
+Version 1.0.0 - October 10, 2014
+================================
+- First public beta release
+

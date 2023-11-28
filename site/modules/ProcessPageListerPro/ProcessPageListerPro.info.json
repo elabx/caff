@@ -1,0 +1,11 @@
+{
+	"title": "ListerPro",
+	"summary": "Provides an advanced page finding, listing and actions tool for the admin (Professional Version).", 
+	"version": 115, 
+	"author": "Ryan Cramer", 
+	"requires": "ProcessWire>=3.0.184", 
+	"permission": "page-lister",
+	"permissionMethod": "hasListerPermission", 
+	"icon": "search-plus",
+    "useNavJSON": true
+}

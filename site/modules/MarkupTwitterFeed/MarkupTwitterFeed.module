@@ -1,0 +1,366 @@
+<?php namespace ProcessWire;
+
+/**
+ * MarkupTwitterFeed module for ProcessWire 3.x
+ * 
+ * Copyright 2018 by Ryan Cramer
+ *
+ * @property int $cacheTime
+ * @property string $consumerKey
+ * @property string $consumerSecret
+ * @property string $userToken
+ * @property string $userSecret
+ * 
+ */
+class MarkupTwitterFeed extends WireData implements Module, ConfigurableModule, \IteratorAggregate {
+
+	public static function getModuleInfo() {
+		return array(
+			'title' => 'Twitter Feed Markup', 
+			'summary' => 'Module that pulls in tweets from a Twitter feed and can render them in your site. See README file for usage instructions.', 
+			'version' => 300, 
+			'singular' => true, 
+			'autoload' => false, 
+			'requires' => 'ProcessWire>=3.0'
+			);
+	}
+
+	/**
+	 * Optional items that may be specified as the first argument to the render() method
+	 *
+	 */
+	protected $options = array(
+		'debug' => false, 
+		'limit' => 3, 
+		'cacheSeconds' => 600, // 10 minutes
+		'dateFormat' => "F j g:i a", // PHP date() or strftime() format, or "relative" to display relative time.
+		'linkUrls' => true, 
+		'showHashTags' => true, 
+		'showAtTags' => true, 
+		'showName' => true, // deprecated, no longer applicable
+		'showDate' => 'after', // should be 'before', 'after', or blank to not show
+		'showReplies' => false, // set to true if you want replies included in the timeline
+		'showRetweets' => false, // set to true if you want retweets included in the timeline
+		'timeline' => 'user_timeline', // may be mentions_timeline, user_timeline, home_timeline or retweets_of_me
+		'screenName' => '', // optional: screen name to return results for. usually you would omit this.
+		'consumerKey' => '',
+		'consumerSecret' => '',
+		'userToken' => '',
+		'userSecret' => '',
+
+		'listOpen' => "<ul class='MarkupTwitterFeed'>",
+		'listClose' => "</ul>",
+		'listItemOpen' => "<li>",
+		'listItemClose' => "</li>",
+		'listItemDateOpen' => " <span class='date'>", 
+		'listItemDateClose' => "</span>", 
+		'listItemLinkOpen' => "<a rel='nofollow' href='{href}'>", 
+		'listItemLinkClose' => "</a>", 
+		); 
+
+	/**
+	 * Where cache files are stored
+	 *
+	 */
+	protected $cachePath; 
+
+	/**
+	 * Define the cache path
+	 *
+	 * Should be done here in the construct rather than the init() because init() is not called on install/uninstall
+	 *
+	 */
+	public function __construct() {
+		$this->cachePath = $this->config->paths->cache . $this->className() . '/';
+		$this->options['dateFormat'] = $this->_('F j g:i a'); // Translatable date format
+	}
+
+	/**
+	 * Create a directory where we will store our cache files
+	 *
+	 */
+	public function ___install() {
+		if(!$this->createCachePath()) throw new WireException("Unable to create directory: {$this->cachePath}"); 
+	}
+
+	/**
+	 * Remove cache files and directory
+	 *
+	 */
+	public function ___uninstall() {
+		if(is_dir($this->cachePath)) wireRmdir($this->cachePath, true); 
+	}
+
+	protected function createCachePath() {
+		$path = $this->cachePath; 
+		if(!is_dir($path)) if(!wireMkdir($path)) return false;
+		return true; 
+	}
+
+	public function init() { }	
+
+	/**
+	 * Set a configuration option
+	 *
+	 * @param string $key Option name
+	 * @param string|int $value Option value
+	 * @return $this|WireData
+	 *
+	 */
+	public function set($key, $value) {
+		if($key == 'options' && is_array($value)) {
+			$this->options = array_merge($this->options, $value);
+		} else if(array_key_exists($key, $this->options)) {
+			$this->options[$key] = $value;
+		} else {
+			return parent::set($key, $value);
+		}
+		return $this;
+	}
+
+	/**
+	 * Get a configuration option
+	 *
+	 * Note that this only returns defaults, and the values returned may not represent runtime changes.
+	 * 
+	 * @param string $key
+	 * @return mixed
+	 *
+	 */
+	public function get($key) {
+		if(array_key_exists($key, $this->options)) return $this->options[$key];
+		return parent::get($key);
+	}
+
+	/**
+	 * Retrieve JSON from Twitter
+	 *
+	 * @return string|bool JSON string on success, boolean false on error
+	 * 
+	 * @param array $options
+	 *
+	 */
+	protected function getTwitterJSON(array $options) {	
+
+		if(!class_exists('\tmhOAuth', false)) {
+			require_once(dirname(__FILE__) . "/tmhOAuth/tmhOAuth.php");
+			require_once(dirname(__FILE__) . "/tmhOAuth/tmhUtilities.php");
+		}
+
+		$oAuth = new \tmhOAuth(array(
+			'consumer_key' => $options['consumerKey'],
+			'consumer_secret' => $options['consumerSecret'],
+			'user_token' => $options['userToken'],
+			'user_secret' => $options['userSecret']
+			));
+
+		$params = array(
+			'exclude_replies' => !$options['showReplies'], 
+			'include_rts' => $options['showRetweets'], 
+			'trim_user' => true, // exclude user details, which we don't use
+			'tweet_mode' => 'extended',
+			);
+
+		if(!empty($options['screenName'])) $params['screen_name'] = $options['screenName'];
+
+		$code = $oAuth->request('GET', $oAuth->url("1.1/statuses/$options[timeline]", 'json'), $params);
+
+		if($code != 200) {
+			$this->log($oAuth->response['response']); // 2.3.1+
+			$this->error($oAuth->response['response'], Notice::debug); 
+			return false;
+		}
+
+		return $oAuth->response['response'];
+	}
+
+	/**
+	 * Get array of Twitter data, whether from cache or from JSON feed
+	 *
+	 * @param array $options
+	 * @return bool|array Returns boolean false on failure, array of data on success. 
+	 * 
+	 */
+	protected function getData(array $options) {
+
+		$options = array_merge($this->options, $options); 
+		$cacheFile = $this->cachePath . md5(print_r($options, true)) . '.json.cache';
+		$saveCache = false;
+
+		if(!is_file($cacheFile) || time() - filemtime($cacheFile) > $options['cacheSeconds']) {
+			$json = $this->getTwitterJSON($options);
+			$saveCache = true; 
+		} else {
+			$json = file_get_contents($cacheFile); 
+		}
+
+		if($json === false) return false;
+
+		$out = json_decode($json, true); 
+
+		if($out && $saveCache) {
+			if(is_dir($this->cachePath)) wireRmdir($this->cachePath, true); 
+			$this->createCachePath();
+			file_put_contents($cacheFile, $json, LOCK_EX);
+		}
+
+		return $out; 
+
+	}
+
+	/**
+	 * For IteratorAggregate interface
+	 * 
+	 * @return \ArrayObject
+	 *
+	 */
+	public function getIterator() {
+		$data = $this->getData(array()); 
+		if(is_array($data)) return new \ArrayObject($data); 
+		return new \ArrayObject();
+	}
+
+	/**
+	 * Render a Twitter feed
+	 *
+	 * Returns markup of Twitter feed on success or error message string on error.
+	 * For more error details, see your log file at /site/assets/logs/markup-twitter-feed.txt
+ 	 *
+	 * @param array $options
+	 * @param array $options2
+	 * @return string
+	 *
+	 */
+	public function render($options = array(), $options2 = array()) {
+
+		if(is_string($options) && is_array($options2)) {
+			// throw away first argument which contains the old RSS URL, no longer used
+			// $rssUrl = $options; 
+			$options = $options2; 
+		}
+
+		$out = '';
+		$error = $this->_('Error retrieving Twitter status'); 
+		$data = $this->getData($options);
+		$options = array_merge($this->options, $options); 
+
+		if($data === false) {
+			$errorCode = json_last_error();
+			$this->log("$error: $errorCode"); 
+			if($this->wire('config')->debug) $error .= ": " . $errorCode;
+			return $error; 
+
+		} else if(!count($data)) {
+			return $this->_('Nothing to show'); 
+		}
+
+		$n = 0;
+		$out .= $options['listOpen']; 
+
+		foreach($data as $item) {
+			$out .= $this->renderItem($item, $options); 
+			if(++$n >= $options['limit']) break;
+		}
+
+		$out .= $options['listClose']; 
+
+		return $out;
+	}
+
+	/**
+	 * Render an individual tweet
+	 * 
+	 * @param array $item
+	 * @param array $options
+	 * @return string
+	 *
+	 */
+	protected function renderItem(array $item, array $options) {
+		
+		if($options['debug']) {
+			return '<pre>' . $this->wire('sanitizer')->entities1(print_r($item, true)) . '</pre>';
+		}
+
+		$dateBefore = '';
+		$dateAfter = '';
+		$text = isset($item['text']) ? $item['text'] : $item['full_text'];
+		
+		if(!$options['showHashTags']) $text = preg_replace('/\#([^\s]+|$)\s*/', '', $text); 
+		if(!$options['showAtTags']) $text = preg_replace('/@([^\s]+|$)\s*/', '', $text); 
+
+		$text = $this->wire('sanitizer')->unentities($text);
+		$text = $this->wire('sanitizer')->entities($text); 
+
+		foreach($item['entities']['urls'] as $u) {
+			if($options['linkUrls']) {
+				$linkOpen = str_replace('{href}', wire('sanitizer')->entities($u['expanded_url']), $options['listItemLinkOpen']); 
+				$text = preg_replace('!' . preg_quote($u['url'], '!') . '(\b|$)!i', $linkOpen . $u['display_url'] . $options['listItemLinkClose'], $text); 
+			} else {
+				$text = preg_replace('!' . preg_quote($u['url'], '!') . '(\b|$)!i', $u['display_url'], $text); 
+			}
+		}
+
+		if($options['showDate']) {
+			//$date = strtotime($item['created_at']);
+			$date = wireDate($options['dateFormat'], $item['created_at']);
+			/*
+			if($options['dateFormat'] == 'relative') {
+				$date = wireRelativeTimeStr($date);
+			} else if(strpos($options['dateFormat'], '%') !== false) {
+				$date = strftime($options['dateFormat'], $date);
+			} else {
+				$date = date($options['dateFormat'], $date);
+			}	
+			*/
+			$dateOut = $options['listItemDateOpen'] . $date . $options['listItemDateClose']; 
+			if($options['showDate'] == 'before') {
+				$dateBefore = $dateOut;
+			} else {
+				$dateAfter = $dateOut; 
+			}
+		}
+
+		return $options['listItemOpen'] . $dateBefore . $text . $dateAfter . $options['listItemClose']; 
+	}
+
+	/**
+	 * Configure the module
+	 * 
+	 * @param InputfieldWrapper $inputfields
+	 *
+	 */
+	public function getModuleConfigInputfields(InputfieldWrapper $inputfields) {
+
+		$fieldset= $this->wire('modules')->get('InputfieldFieldset');
+		$fieldset->label = $this->_('Twitter API Settings'); 
+		$fieldset->notes = $this->_('You may obtain the above pieces of information by creating a Twitter application at [https://dev.twitter.com/apps](https://dev.twitter.com/apps).');
+		$inputfields->add($fieldset); 
+
+		$items = array(
+			'consumerKey' => __('Consumer Key'),
+			'consumerSecret' => __('Consumer Secret'),
+			'userToken' => __('Access Token'),
+			'userSecret' => __('Access Secret'),
+			);	
+
+		foreach($items as $name => $label) {
+			$f = $this->wire('modules')->get('InputfieldText');
+			$f->attr('name', $name); 
+			$f->label = $label;
+			$f->required = true; 
+			$f->columnWidth = 50;
+			$f->attr('value', $this->get($name)); 
+			$fieldset->add($f); 	
+		}
+
+		$f = $this->wire('modules')->get('InputfieldInteger'); 
+		$f->attr('name', 'cacheTime'); 
+		$f->label = __('How often to check for new tweets'); 
+		$f->description = __('Enter the number of seconds.');
+		$f->notes = __('Examples: 60=1 minute, 600=10 minutes, 3600=1 hour, 14400=4 hours, 86500=1 day.'); 
+		$f->attr('value', $this->cacheTime ? $this->cacheTime : 600); 
+		$inputfields->add($f); 
+	}
+
+}
+

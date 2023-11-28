@@ -1,0 +1,1155 @@
+<?php namespace ProcessWire;
+
+/**
+ * Action Module that lets you export pages to CSV
+ * 
+ * MODULE CONFIG
+ * @property string $defaultFields 
+ *
+ * RUNTIME CONFIG 
+ * @property int $exportHeadings
+ * @property array $exportFields
+ * @property string $format
+ * @property string $multiSeparator
+ * @property string $enclosure
+ * @property string $delimiter
+ * @property PageAction $iftAction
+ * @property string $csvNewPreset
+ * @property array|bool $preset
+ * @property array $extras
+ * @method void install()
+ * 
+ * HOOKABLE METHODS
+ * @method array exportPage(Page $page)
+ * @method array exportHeader(array $data)
+ * @method string pageToString(Page $page, $name, $language = null)
+ * 
+ *
+ */
+
+class PageActionExportCSV extends PageAction implements Module, ConfigurableModule {
+
+	public static function getModuleInfo() {
+		return array(
+			'title' => __('Page Action: Export Pages to CSV', __FILE__), 
+			'summary' => __('An action that lets you export pages to CSV.', __FILE__), 
+			'version' => 6, 
+			'author' => 'Avoine, ISED Canada, ProcessWire', 
+			'permission' => 'page-action-export-csv', 
+			'permissions' => array('page-action-export-csv' => 'Page Action: Export Pages to CSV'),
+			'requires' => 'ProcessWire>=3.0.137, ProcessPageListerPro>=1.1.3', 
+		); 
+	}
+
+	/**
+	 * Name of files field added to user profile
+	 *
+	 */
+	const userFiles = 'csv_files';
+
+	/**
+	 * Column headings styles for exported CSV file
+	 *
+	 */
+	const headingBoth = 0; 
+	const headingLabel = 1; 
+	const headingName = 2; 
+	const headingNone = 3;
+	
+	protected $headings = array(
+		'both',
+		'labels',
+		'names',
+		'none'
+	);
+
+	/**
+	 * Multi-value separators that are allowed
+	 * 
+	 * @var array
+	 * 
+	 */
+	protected $multiSeparators = array(
+		'newline' => "\n", 
+		'bulleted-list' => "\n• ", 
+		'comma' => ",",
+		'semicolon' => ';', 
+		'tab' => "\t", 
+		'pipe' => "|", 
+	);
+	
+	protected $delimiters = array(
+		'comma' => ",", 
+		'tab' => "\t", 
+		'semicolon' => ";", 
+		'pipe' => "|", 
+		'caret' => '^',
+	);
+	
+	protected $enclosures = array(
+		'double-quote' => '"', 
+		'single-quote' => "'", 
+	);
+	
+	protected $extraOptions = array(
+		'html-to-text',
+	);
+		
+	
+	/**
+	 * File pointer to export file
+	 *
+	 */
+	protected $fp = null;
+
+	/**
+	 * A unique ID to associate with a file
+	 *
+	 */
+	protected $uniqueID = null; 
+
+	/**
+	 * System field definitions
+	 *
+	 */
+	protected $systemFields = array();
+
+	/**
+	 * True if dealing with a new file, indicates we need to write headers
+	 *
+	 */
+	protected $isNew = false; 
+
+	/**
+	 * Languages API var, if installed (null otherwise)
+	 * 
+	 * @var Languages
+	 *
+	 */
+	protected $languages = null;
+
+	/**
+	 * @var ProcessPageLister|ProcessPageListerPro
+	 * 
+	 */
+	protected $lister = null;
+	
+	/**
+	 * Substitute field names
+	 * 
+	 * @var array
+	 * 
+	 */
+	protected $substituteFieldNames = array(
+		'created_users_id' => 'createdUser.name',
+		'modified_users_id' => 'modifiedUser.name',
+		'status' => 'statusStr',
+	);
+
+	/**
+	 * Construct
+	 * 
+	 */
+	public function __construct() {
+		parent::__construct();
+		$this->set('defaultFields', '');
+	}
+	
+	/**
+	 * Initialize CSV export module
+	 *
+	 */
+	public function init() {
+		
+		$this->systemFields = array(
+			'id' => $this->_('ID'),
+			'name' => $this->_('Name (from URL)'),
+			'path' => $this->_('Path'),
+			'url' => $this->_('URL'),
+			'httpUrl' => $this->_('URL (w/scheme + domain)'),
+			'status' => $this->_('Status'),
+			'created' => $this->_('Date Created'),
+			'modified' => $this->_('Date Last Modified'),
+			'createdUser.id' => $this->_('Created by User: ID'),
+			'createdUser.name' => $this->_('Created by User: Name'),
+			'modifiedUser.id' => $this->_('Modified by User: ID'),
+			'modifiedUser.name' => $this->_('Modified by User: Name'),
+			'parent_id' => $this->_('Parent Page ID'),
+			'parent.name' => $this->_('Parent Page Name'),
+			'template.id' => $this->_('Template ID'),
+			'template' => $this->_('Template Name'),
+		);
+
+		$this->set('format', 'csv'); 
+		$this->set('exportFields', array());
+		$this->set('exportLanguage', 0);
+		$this->set('exportHeadings', self::headingLabel); 
+		$this->set('multiSeparator', "newline"); // separator for multi-value fields like PageArray
+		$this->set('delimiter', 'comma'); 
+		$this->set('enclosure', 'double-quote');
+		$this->set('extras', array());
+		$this->set('preset', false);
+		$this->set('csvNewPreset', ''); 
+		
+		$input = $this->wire()->input;
+		$config = $this->wire()->config;
+		
+		if($config->ajax) { 
+			$task = $input->post($this->className()); 
+			if($task) $this->processAjaxTask($task); 
+		} else {
+			$config->scripts->add($config->urls($this) . $this->className() . '.js'); 
+		}
+	}
+	
+	protected function processAjaxTask($task) {
+		
+		$input = $this->wire('input');
+		$sanitizer = $this->wire('sanitizer');
+		
+		if($task === 'load_preset') {
+			$loadPresetName = $input->post->name('load_preset');
+			if($loadPresetName) {
+				$this->preset = $this->loadPreset($loadPresetName);
+			}
+			
+		} else if($task === 'add_preset') {
+			$addPresetTitle = $input->post->text('add_preset');
+			if($addPresetTitle) {
+				$data = array();
+				$data['exportFields'] = $input->post->array('exportFields');
+				foreach($data['exportFields'] as $key => $value) {
+					$data['exportFields'][$key] = $sanitizer->name($value);
+				}
+				$data['exportHeadings'] = (int) $input->post('exportHeadings');
+				$data['multiSeparator'] = $sanitizer->option($input->post('multiSeparator'), array_keys($this->multiSeparators)); 
+				$data['delimiter'] = $sanitizer->option($input->post('delimiter'), array_keys($this->delimiters));
+				$data['enclosure'] = $sanitizer->option($input->post('enclosure'), array_keys($this->enclosures)); 
+				$data['extras'] = $sanitizer->options($input->post->array('extras'), $this->extraOptions); 
+				$this->savePreset($addPresetTitle, $data);
+			}
+			
+		} else if($task === 'delete_presets') {
+			$deletePresets = $input->post->array('delete_presets');
+			if(count($deletePresets)) $this->deletePresets($deletePresets);
+		}
+	}
+
+	/**
+	 * Export a single page to a line in the CSV file
+	 *
+	 * @param Page $item
+	 * @return bool 
+	 * @throws WireException
+	 *
+	 */
+	public function ___action($item) { 
+
+		if(!$this->fp) throw new WireException("This action can only be run in multiple mode"); 
+
+		$a = $this->exportPage($item);
+		$delimiter = $this->delimiters[$this->delimiter];
+		$enclosure = $this->enclosures[$this->enclosure];
+
+		if($this->isNew) {
+			$exportLabels = $this->exportHeader($a);
+			if(is_array($exportLabels)) fputcsv($this->fp, $exportLabels, $delimiter, $enclosure);
+			$this->isNew = false;
+			$this->getDefaultFields(true); // save default fields
+		}
+
+		fputcsv($this->fp, $a, $delimiter, $enclosure); // output the row data
+
+		return true; 
+	}
+
+	/**
+	 * Execute/process multiple items (part of the WireAction interface)
+	 *
+	 * @param PageArray $items
+	 * @return int
+	 * @throws WireException
+	 *
+	 */
+	public function ___executeMultiple($items) {
+
+		if(!$items instanceof PageArray) throw new WireException("PageArray required"); 
+
+		/** @var User $user */
+		$user = $this->wire('user'); 
+		
+		/** @var Pagefiles $files */
+		$files = $user->get(self::userFiles); 
+		if(!$files) $this->install(); // no csv_files field on user? add it
+
+		$basename = $user->name . '-' . $this->getUniqueID() . '.' . $this->format; 
+		$pathname = $files->path() . $basename; 
+		$url = $files->url() . $basename; 
+
+		$this->isNew = !is_file($pathname); 
+		$this->fp = fopen($pathname, 'a'); 
+		if(!$this->fp) throw new WireException("Error creating: $pathname");
+		if($this->isNew) fwrite($this->fp, "\xEF\xBB\xBF"); // UTF-8 BOM: needed for some software to recognize UTF-8
+
+		$numItems = count($items); 
+		$this->message("Writing $numItems item(s) to <a class='csv-download-link' href='$url'>$basename</a>", Notice::allowMarkup); 
+
+		$result = parent::___executeMultiple($items); 
+
+		fclose($this->fp);
+
+		$file = $files->get($basename); 
+		if(!$file) {
+			// add file to user profile
+			$iftAction = $this->iftAction;
+			$of = $user->of();
+			if($of) $user->of(false); 
+			$files->add($pathname); 
+			$file = $files->last();
+			if($iftAction) $file->description = $iftAction->get('title');
+			$file->description .= ' ' . date($this->_('Y-m-d H:i')) . ' ' . $this->_('exported file'); 
+			$user->save(self::userFiles); 
+			if($of) $user->of(true); 
+			$this->message(sprintf(
+				$this->_('Added file %1$s to user(%2$s).%3$s'),
+				$basename, $user->name, self::userFiles
+			)); 
+		}
+
+		$this->summary = $this->_('Download URL:') . ' ' .  $file->httpUrl;
+
+		return $result; 
+	}
+
+	/**
+	 * Export the header row as an array containing the header labels in order
+	 * 
+	 * @param array $data Example of a row with keys being the field names
+	 * @return array
+	 * 
+	 */
+	protected function ___exportHeader(array $data) {
+		$exportHeadings = (int) $this->exportHeadings;
+		// if it's a new file, the first row will be the field names or labels
+		if($exportHeadings === self::headingNone) {
+			$exportLabels = null;
+
+		} else if($exportHeadings === self::headingName) {
+			$exportLabels = array_keys($data);
+
+		} else {
+			$exportLabels = array();
+			$labels = $this->wire('session')->get($this, 'labels');
+			if(!is_array($labels)) $labels = array();
+			foreach(array_keys($data) as $name) {
+				$label = isset($labels[$name]) ? $labels[$name] : $name;
+				if($exportHeadings === self::headingBoth) $label .= " [$name]";
+				$exportLabels[$name] = $label;
+			}
+		}
+		
+		return $exportLabels;
+	}
+
+	/**
+	 * Export a page to an array
+	 *
+	 * @param Page $page
+	 * @return array
+	 *
+	 */
+	protected function ___exportPage(Page $page) {
+
+		// $editURL = 'http://' . wire('config')->httpHost . wire('config')->urls->admin . 'page/edit/?id=';
+		// $viewURL = 'http://' . wire('config')->httpHost; 
+		
+		$data = array();
+
+		foreach($this->exportFields as $name) {
+			$value = $this->pageToString($page, $name); 
+			if(ctype_digit($value) && strpos($value, '0') !== 0) {
+				// convert all-digit values to integer if the conversion only changes type and not value
+				$v = (int) $value;
+				if("$v" === $value) $value = $v;
+			}
+			$data[$name] = $value; 
+		}
+
+		return $data; 
+	}
+
+	/**
+	 * Get string value from $page for given field $name 
+	 * 
+	 * @param Page $page
+	 * @param string $name
+	 * @param Language|null $language
+	 * @return string
+	 * 
+	 */
+	protected function ___pageToString(Page $page, $name, $language = null) {
+		
+		$lister = $this->getLister();
+		$languages = $this->getLanguages();
+		$subfield = '';
+		$fallback = '';
+
+		$of = $page->of();
+		if($of) $page->of(false);
+		
+		if(strpos($name, '-') !== false && $lister && $languages) {
+			// identify the language and remove the "-lang" portion of the $name
+			$language = $lister->identifyLanguage($name, true);
+		}
+		
+		if(empty($name)) {
+			$name = 'title';
+			$fallback = 'name';
+		} else if(strpos($name, '.') !== false) {
+			list($name, $subfield) = explode('.', $name, 2);
+		}
+		
+		if(isset($this->substituteFieldNames[$name])) {
+			$name = $this->substituteFieldNames[$name];
+		}
+		if($subfield && isset($this->substituteFieldNames[$subfield])) {
+			$subfield = $this->substituteFieldNames[$subfield];
+		}
+		
+		if($language) {
+			$value = $page->getLanguageValue($language, $name);
+		} else {
+			$value = $page->get($name);
+		}
+		
+		if(empty($value) && $fallback) {
+			$value = $page->get($fallback); 
+		}
+		
+		$field = $this->wire('fields')->get($name); 
+		$isTS = $field && $value && $field->type instanceof FieldtypeDatetime;
+		
+		if(($name === 'statusStr' || $subfield === 'statusStr') && strlen($value)) {
+			$value = explode(' ', $value); // force arrayToString conversion
+		}
+
+		if($isTS || $name === 'created' || $name === 'modified' || $name === 'published') {
+			$value = $value ? date('Y-m-d H:i:s', (int) $value) : '';
+		} else {
+			$value = $this->valueToString($value, $subfield, $language); 
+		}
+		
+		if(in_array('html-to-text', $this->extras) && strpos($value, '</')) {
+			/** @var WireTextTools $textTools */
+			$textTools = $this->wire('sanitizer')->getTextTools();
+			$value = $textTools->markupToText($value, array('underlineHeadlines' => false)); 
+		}
+		
+		/** @var Fieldtype $fieldtype */
+		/*
+		$fieldtype = $field->type;
+		$options = array();
+		$options['human'] = true;
+		$value = $fieldtype->exportValue($page, $field, $value, $options);
+		*/
+		
+		//if($language) $languages->unsetLanguage();
+		if($of) $page->of(true);
+		
+		return $value;
+	}
+
+	/**
+	 * Given any kind of value, return a string version of it
+	 * 
+	 * @param mixed $value
+	 * @param string $subfield
+	 * @param Language|null $language
+	 * @return string
+	 * 
+	 */
+	protected function valueToString($value, $subfield, $language = null) {
+		if($value instanceof Page) {
+			if(!$subfield) $subfield = 'title|name';
+			$value = $this->pageToString($value, $subfield, $language);
+		} else if($value instanceof LanguagesValueInterface && $language) {
+			$value = $this->valueToString($value->getLanguageValue($language->id), $subfield, $language);
+		} else if(is_object($value)) {
+			$value = $this->objectValueToString($value, $subfield, $language); 
+		} else if(is_array($value)) {
+			$value = $this->arrayValueToString($value, $subfield, $language); 
+		} else {
+			$value = "$value";
+		}
+		return $value; 
+	}
+
+	/**
+	 * Given an array value return a string version of it
+	 * 
+	 * @param array $value
+	 * @param string $subfield
+	 * @param Language|null $language
+	 * @return string
+	 * 
+	 */
+	protected function arrayValueToString(array $value, $subfield, $language = null) {
+		if(empty($value)) return '';
+		$sep = $this->multiSeparators[$this->multiSeparator];
+		$values = array();
+		foreach($value as $k => $v) {
+			$v = $this->valueToString($v, $subfield, $language); 
+			if(strpos($v, $sep) !== false) $v = str_replace($sep, '', $v); 
+			$values[] = $v;
+		}
+		$value = implode($sep, $values); 
+		if($this->multiSeparator === 'bulleted-list') $value = trim($sep . $value);
+		return $value;
+	}
+
+	/**
+	 * Given an object value return a string version of it 
+	 * 
+	 * @param object $value
+	 * @param string $subfield
+	 * @param Language|null $language
+	 * @return string
+	 * 
+	 */
+	protected function objectValueToString($value, $subfield, $language = null) {
+	
+		if($value instanceof Page) {
+			if(!$subfield) $subfield = 'title|name';
+			$value = $this->pageToString($value, $subfield, $language);
+
+		} else if($language && $value instanceof LanguagesValueInterface) {
+			$value = $value->getLanguageValue($language->id);
+			$value = $this->valueToString($value, $subfield, $language);
+
+		} else if($value instanceof WireArray) {
+			$sep = $this->multiSeparators[$this->multiSeparator];
+			$values = array();
+			foreach($value as $v) {
+				$v = $this->valueToString($v, $subfield, $language);
+				if(strpos($v, $sep) !== false) $v = str_replace($sep, '', $v); 
+				$values[] = $v;
+			}
+			if(count($values)) {
+				$value = implode($sep, $values);
+				if($this->multiSeparator === 'bulleted-list') $value = trim($sep . $value);
+			}
+			unset($values);
+
+		} else if($subfield) {
+			$value = $value->$subfield;
+			$value = $this->valueToString($value, '', $language);
+
+		} else {
+			$value = (string) $value;
+		}
+		
+		return $value; 
+	}
+
+	/**
+	 * Get Lister instance, if applicable
+	 * 
+	 * @return bool|ProcessPageLister|ProcessPageListerPro Returns instance or false if not applicable
+	 * 
+	 */
+	protected function getLister() {
+		if($this->lister !== null) return $this->lister;
+		/** @var ListerProActions $runner */
+		$runner = $this->getRunner();
+		/** @var ProcessPageListerPro $lister */
+		$this->lister = $runner && $runner->className() == 'ListerProActions' ? $runner->lister : false;
+		return $this->lister;
+	}
+
+	/**
+	 * Get the $languages API var if supported and in Lister, otherwise return false
+	 * 
+	 * @return Languages|false
+	 * 
+	 */
+	protected function getLanguages() {
+		if($this->languages !== null) return $this->languages; 
+		/** @var Languages $languages */
+		$this->languages = $this->wire('languages');
+		if($this->languages) {
+			$lister = $this->getLister();
+			// only use languages if supported by the ListerPro version
+			if(!$lister || !method_exists($lister, 'identifyLanguage')) $this->languages = false;
+		} else {
+			$this->languages = false;
+		}
+		return $this->languages;
+	}
+
+	/**
+	 * Get a unique ID that will be used in the filename
+	 *
+	 * This has to account for the potential of combining multiple batches into one file
+	 *
+	 * @return int
+	 *
+	 */
+	protected function getUniqueID() {
+
+		$iftAction = $this->iftAction;
+
+		if($iftAction) {
+			$uniqueID = $iftAction->get('rootParentID'); 
+			if(!$uniqueID) $uniqueID = $iftAction->get('id'); 
+		} else {
+			if($this->uniqueID) return $this->uniqueID; 
+			$uniqueID = time();	
+		}
+
+		$this->uniqueID = $uniqueID; 
+
+		return $uniqueID; 
+	}
+
+	/**
+	 * Save CSV settings preset
+	 * 
+	 * @param string $presetTitle
+	 * @param array $data
+	 * @return array
+	 * 
+	 */
+	protected function savePreset($presetTitle, array $data = array()) {
+		
+		if(empty($presetTitle)) return array();
+		
+		$presetName = $this->wire('sanitizer')->pageName($presetTitle, true);
+		
+		/** @var User $user */
+		$user = $this->wire('user');
+		/** @var Page $page */
+		$page = $this->wire('page');
+		
+		$preset = array(
+			'title' => $presetTitle,
+			'exportFields' => $this->exportFields,
+			'exportHeadings' => $this->exportHeadings,
+			'multiSeparator' => $this->multiSeparator,
+			'enclosure' => $this->enclosure,
+			'delimiter' => $this->delimiter,
+			'extras' => $this->extras,
+			'created' => time(),
+		);
+		
+		if(count($data)) {
+			$preset = array_merge($preset, $data);
+			foreach($data as $key => $value) {
+				$this->set($key, $value);
+			}
+		}
+	
+		$meta = $user->meta($this->className()); 
+		if(empty($meta)) $meta = array();
+		if(empty($meta["_$page"])) $meta["_$page"] = array();
+		$meta["_$page"][$presetName] = $preset;
+		$user->meta($this->className(), $meta); 
+		$this->preset = $preset; 
+		
+		return $preset;
+	}
+	
+	protected function deletePresets($presetNames) {
+		
+		/** @var User $user */
+		$user = $this->wire('user');
+		/** @var Page $page */
+		$page = $this->wire('page');
+
+		if(!is_array($presetNames)) $presetNames = array($presetNames);
+		
+		$meta = $user->meta($this->className());
+		if(empty($meta)) return 0;
+		if(empty($meta["_$page"])) return 0;
+		
+		$numDeleted = 0;
+		
+		foreach($presetNames as $presetName) {
+			$presetName = $this->wire('sanitizer')->name($presetName);
+			if(!isset($meta["_$page"][$presetName])) continue;
+			unset($meta["_$page"][$presetName]);
+			$numDeleted++;
+		}
+
+		if($numDeleted) $user->meta($this->className(), $meta); 
+		
+		return $numDeleted;
+	}
+	
+	protected function loadPreset($presetName) {
+		
+		/** @var User $user */
+		$user = $this->wire('user');
+		/** @var Page $page */
+		$page = $this->wire('page');
+
+		$meta = $user->meta($this->className());
+		if(empty($meta)) return false;
+		if(empty($meta["_$page"])) return false;
+		if(empty($meta["_$page"][$presetName])) return false;
+		
+		$preset = $meta["_$page"][$presetName];
+		
+		foreach($preset as $key => $value) {
+			if($key == 'title' || $key == 'created') continue;
+			$this->set($key, $value); 
+		}
+		
+		return $preset;
+	}
+
+	/**
+	 * @return InputfieldWrapper
+	 *
+	 */
+	public function ___getConfigInputfields() {
+
+		$optionLabels = array(
+			'newline' => $this->_('Newline'),
+			'bulleted-list' => $this->_('Bulleted list'),
+			'comma' => $this->_('Comma'),
+			'semicolon' => $this->_('Semicolon'),
+			'tab' => $this->_('Tab'),
+			'pipe' => $this->_('Pipe'),
+			'caret' => $this->_('Caret'),
+			'double-quote' => $this->_('Double quote'),
+			'single-quote' => $this->_('Single quote'),
+			'html-to-text' => $this->_('HTML to text'),
+		);
+
+		$fieldset = parent::___getConfigInputfields();
+		$fieldset->attr('id', $this->className() . '-settings'); 
+		$fieldset->icon = 'file-excel-o';
+		$fieldset->label = $this->_('Export Pages to CSV'); 
+	
+		$session = $this->wire()->session;
+		$modules = $this->wire()->modules;
+		$sanitizer = $this->wire()->sanitizer;
+
+		/** @var ListerProActions $runner */
+		$runner = $this->getRunner();
+		
+		/** @var ProcessPageListerPro $lister */
+		$lister = $runner && $runner->className() == 'ListerProActions' ? $runner->lister : null;
+		$columns = $this->getDefaultFields();
+		
+		// $this->message("columns=" . implode(',', $columns)); 
+
+		if($lister) { 
+			if(empty($columns)) $columns = $lister->columns; 
+			// refine fields to reflect only those on the Lister's templates	
+			$select = $lister->buildColumnsField();
+		} else {
+			if(empty($columns)) $columns = array('id', 'url', 'title', 'modified'); 
+			$select = $this->buildNonListerColumnsField($columns); 
+		}
+
+		$select->attr('name', 'exportFields'); 
+		$select->attr('id', 'csv_exportFields');
+		$select->attr('value', $this->preset ? $this->exportFields : $columns); 
+		$select->label = $this->_('Fields and order to be exported'); 
+		$select->description = $this->_('Select the fields you want to export and drag/drop them to the order you want them to appear in the resulting CSV file.');
+		$select->addClass('export-csv-settings', 'wrapClass');
+		$optionAttributes = $select->get('optionAttributes');
+		if($this->preset) $select->description = sprintf($this->_('Preset: “%s”'), $this->preset['title']); 
+		$select->notes = '';
+
+		$fieldset->add($select); 
+
+		// store labels in session for later use in constructing header row
+		$labels = array();
+		foreach($select->getOptions() as $value => $label) {
+			if($label === $value && $optionAttributes && isset($optionAttributes[$value])) {
+				$attributes = $optionAttributes[$value];
+				if(isset($attributes['data-desc'])) $label = $attributes['data-desc'];
+			}
+			$labels[$value] = $label;
+		}
+		$session->setFor($this, 'labels', $labels); 
+	
+		/** @var InputfieldFieldset $fs */
+		$fs = $modules->get('InputfieldFieldset');
+		$fs->attr('name', 'csv_details');
+		$fs->label = $this->_('CSV format details');
+		$fs->collapsed = Inputfield::collapsedYes;
+		$fs->icon = 'sliders';
+		$fieldset->add($fs);
+
+		/** @var InputfieldRadios $radios */
+		$radios = $modules->get('InputfieldRadios'); 
+		$radios->attr('name', 'exportHeadings'); 
+		$radios->attr('id', 'csv_exportHeadings');
+		$radios->label = $this->_('Header');
+		$radios->addOption(self::headingLabel, $this->_('Labels'));
+		$radios->addOption(self::headingName, $this->_('Names')); 
+		$radios->addOption(self::headingBoth, $this->_('Both')); 
+		$radios->addOption(self::headingNone, $this->_('None')); 
+		$radios->attr('value', (int) $this->exportHeadings); 
+		$radios->columnWidth = 20;
+		$radios->addClass('export-csv-settings', 'wrapClass');
+		$fs->add($radios); 
+		
+		/** @var InputfieldRadios $f */
+		$f = $modules->get('InputfieldRadios');
+		$f->attr('name', 'multiSeparator'); 
+		$f->attr('id', 'csv_multiSeparator');
+		$f->label = $this->_('Multi-value separator'); 
+		foreach($this->multiSeparators as $name => $separator) {
+			$label = isset($optionLabels[$name]) ? $optionLabels[$name] : ucfirst($name);
+			$f->addOption($name, $label); 
+		}
+		$f->attr('value', $this->multiSeparator); 
+		$f->columnWidth = 20;
+		$f->addClass('export-csv-settings', 'wrapClass');
+		$fs->add($f);
+		
+		$f = $modules->get('InputfieldRadios'); 
+		$f->attr('name', 'delimiter');
+		$f->attr('id', 'csv_delimiter');
+		$f->label = $this->_('CSV delimiter');
+		$f->addClass('export-csv-settings', 'wrapClass');
+		foreach($this->delimiters as $name => $delimiter) {
+			$label = isset($optionLabels[$name]) ? $optionLabels[$name] : ucfirst($name);
+			$f->addOption($name, $label); 
+		}
+		$f->attr('value', $this->delimiter); 
+		$f->columnWidth = 20;
+		$fs->add($f);
+		
+		$f = $modules->get('InputfieldRadios');
+		$f->attr('name', 'enclosure');
+		$f->attr('id', 'csv_enclosure');
+		$f->label = $this->_('CSV enclosure');
+		$f->addClass('export-csv-settings', 'wrapClass');
+		foreach($this->enclosures as $name => $enclosure) {
+			$label = isset($optionLabels[$name]) ? $optionLabels[$name] : ucfirst($name);
+			$f->addOption($name, $label);
+		}
+		$f->attr('value', $this->enclosure);
+		$f->columnWidth = 20;
+		$fs->add($f);
+	
+		/** @var InputfieldCheckboxes $f */
+		$f = $modules->get('InputfieldCheckboxes');
+		$f->attr('name', 'extras');
+		$f->attr('id', 'csv_extras');
+		$f->label = $this->_('Extras');
+		$f->addClass('export-csv-settings', 'wrapClass');
+		foreach($this->extraOptions as $name) {
+			$label = isset($optionLabels[$name]) ? $optionLabels[$name] : ucfirst($name);
+			$f->addOption($name, $label);
+		}
+		$f->attr('value', $this->extras);
+		$f->columnWidth = 20;
+		$fs->add($f);
+	
+		/** @var InputfieldFieldset $fs */
+		$fs = $modules->get('InputfieldFieldset');
+		$fs->attr('name', 'csvPresets');
+		$fs->attr('id', 'csv_presets');
+		$fs->label = $this->_('Presets');
+		$fs->icon = 'bookmark-o';
+		$fs->collapsed = Inputfield::collapsedYes;
+		$fieldset->add($fs);
+
+		$addNewLabel = $this->_('Add new preset'); 
+		/** @var InputfieldText $f */
+		$f = $modules->get('InputfieldText'); 
+		$f->attr('name', 'csvNewPreset');
+		$f->attr('id', 'csv_new_preset'); 
+		$f->label = $addNewLabel;
+		$f->description = $this->_('To save the current settings as a new preset, enter a title for the preset here and click the button.');
+		$fs->add($f);
+		
+		/** @var InputfieldButton $button */
+		$button = $modules->get('InputfieldButton');
+		$button->attr('id', 'submit_csv_new_preset'); 
+		$button->attr('value', $addNewLabel);
+		$button->setSmall(true);
+		$button->setSecondary(true);
+		$button->href = '#csv_presets';
+		$f->appendMarkup = "<p>" . $button->render() . "</p>";
+
+		$meta = $this->wire()->user->meta($this->className());
+		$page = $this->wire()->page;
+		$presets = is_array($meta) && isset($meta["_$page"]) ? $meta["_$page"] : array();
+	
+		/** @var InputfieldCheckbox $checkbox */
+		$checkbox = $modules->get('InputfieldCheckbox');
+		$checkbox->attr('name', 'csv_presets_delete[]'); 
+		$checkbox->addClass('csv-presets-delete'); 
+		$checkbox->label = ' ';
+		
+		/** @var MarkupAdminDataTable $table */
+		$table = $modules->get('MarkupAdminDataTable');
+		$table->setEncodeEntities(false);
+		$table->setSortable(false);
+		$table->headerRow(array(
+			$this->_('Preset'), 
+			$this->_('Fields'), 
+			$this->_('Created'), 
+			"<i class='fa fa-fw fa-lg fa-trash-o'></i>"
+		));
+		
+		/** @var InputfieldMarkup $f */
+		$f = $modules->get('InputfieldMarkup');
+		$f->attr('name', 'csvPresets');
+		$f->attr('id', 'csv_presets_list'); 
+		$f->label = $this->_('CSV settings presets');
+		$f->description = $this->_('Click on the preset you would like to use.'); 
+		
+		foreach($presets as $name => $preset) {
+			$checkbox->attr('value', $name); 
+			$checkbox->attr('id', 'csv-presets-delete-' . $name); 
+			$title = $sanitizer->entities($preset['title']);
+			/*
+			$format = array(
+				'A:' . $this->headings[$this->exportHeadings], 
+				'B:' . $this->multiSeparator, 
+				'C:' . $this->delimiter, 
+				'D:' . $this->enclosure
+			);
+			$format = array_merge($format, array('E:' . implode('+', $this->extras))); 
+			*/
+			$table->row(array(
+				"<a class='load-csv-preset' data-preset='$name' href='#PageActionExportCSV-settings'>$title</a>", 
+				implode(', ', $preset['exportFields']), 
+				wireRelativeTimeStr($preset['created']), 
+				"&nbsp;" . $checkbox->render(),
+			));
+		}
+		
+		/** @var InputfieldButton $button */
+		$button = $modules->get('InputfieldButton');
+		$button->attr('id', 'submit_csv_presets_delete');
+		$button->attr('value', $this->_('Delete'));
+		$button->setSmall(true);
+		$button->setSecondary(true);
+		$button->href = '#csv_presets';
+
+		if(count($presets)) {
+			$f->attr('value', $table->render() . '<p style="text-align:right">' . $button->render() . '</p>');
+		} else {
+			$f->attr('value', "<p>" . $this->_('No presets defined yet.') . "</p>"); 
+		}
+		$fs->add($f);
+		
+		return $fieldset; 
+	}
+
+	/**
+	 * Populate the columns select for when this module is running without ListerPro
+	 *
+	 * @param array $columns
+	 * @return InputfieldAsmSelect
+	 *
+	 */
+	protected function buildNonListerColumnsField(array $columns) {
+		if($columns) {} // ignore
+
+		/** @var InputfieldAsmSelect $select */
+		$select = $this->wire('modules')->get('InputfieldAsmSelect'); 
+		/** @var Fields $fields */
+		$fields = $this->wire('fields'); 
+		$siteFieldNames = array();
+
+		foreach($this->systemFields as $name => $label) {
+			$select->addOption($name, $name, array(
+				'data-desc' => $label, 
+				'data-status' => $this->_('System'),
+				//'selected' => (in_array($name, $columns) ? 'selected' : '')
+			)); 
+		}
+
+		$nullPage = new NullPage();
+
+		foreach($fields as $field) {
+
+			if($field->type instanceof FieldtypeFieldsetOpen) continue; 
+
+			$siteFieldNames[$field->name] = $field->name; 
+
+			$select->addOption($field->name, $field->name, array(
+				'data-desc' => $field->getLabel(), 
+				'data-status' => str_replace('Fieldtype', '', $field->type),
+				//'selected' => (in_array($field->name, $columns) ? 'selected' : '')
+			));	
+
+			$info = $field->type->getSelectorInfo($field); 
+
+			if(count($info['subfields'])) {
+
+				$blankValue = $field->type->getBlankValue($nullPage, $field);
+				if($blankValue instanceof Page || $blankValue instanceof PageArray) {	
+					foreach($this->systemFields as $name => $label) {
+						if(strpos($name, '.') !== false) continue; 
+						$select->addOption("$field->name.$name", "$field->name.$name", array(
+							'data-desc' => "$label: $name", 
+							'data-status' => $this->_('System Subfield'), 
+							//'selected' => (in_array("$field->name.$name", $columns) ? 'selected' : '')
+						));
+					}
+				}
+
+				foreach($info['subfields'] as $name => $subinfo) {
+					$label = $field->getLabel();
+					$select->addOption("$field->name.$name", "$field->name.$name", array(
+						'data-desc' => "$label: $name", 
+						'data-status' => $this->_('Subfield'), 
+						//'selected' => (in_array("$field->name.$name", $columns) ? 'selected' : '')
+					));
+				}
+			}
+		}
+
+		return $select; 
+	}
+
+	/**
+	 * Return an array of default fields to popualte as default value in field select
+	 *
+	 * @param bool $save Optionally set to true to save the current exportFields value. 
+	 * @return array
+	 *
+	 */
+	public function getDefaultFields($save = false) {
+
+		$pageName = $this->wire('page')->name; 
+		$fields = array();
+		$lines = array();
+		if($this->defaultFields) {
+			$defaultFields = explode("\n", $this->defaultFields); 
+			$has = false;
+			foreach($defaultFields as $line) {
+				if(strpos(trim($line), "$pageName=") === 0) $has = true; 
+			}
+			if(!$has) $defaultFields[] = "$pageName="; 
+		} else { 
+			$defaultFields = array("$pageName="); 
+		}
+
+		// defaultFields string: listerName=field1,field2,field3 \nlisterName2=fieldA,fieldB,fieldC
+
+		foreach($defaultFields as $line) {
+
+			if(strpos($line, '=') === false) continue; 
+			list($name, $line) = explode('=', $line); 
+
+			$name = trim($name); 
+			$line = trim($line); 
+
+			if($name != $pageName) {
+				$lines[] = "$name=$line";
+				continue; 	
+			}
+
+			if($save) {
+				$_fields = $this->exportFields;
+				foreach($_fields as $k => $f) {
+					if(ctype_digit("$f")) {
+						$f = $this->wire('fields')->get((int) $f);
+						if($f) $fields[$k] = $f->name; 
+					} else {
+						$fields[$k] = $f; 
+					}
+				}
+				$line = "$pageName=" . implode(',', $fields);
+				$lines[] = $line; 
+			} else {
+				$line = str_replace(',', ' ', $line); 	
+				$_fields = explode(' ', $line); 
+				foreach($_fields as $fieldName) {
+					if(empty($fieldName)) continue; 
+					$fields[] = $fieldName; 
+				}
+				$lines[] = "$pageName=" . implode(',', $fields); 
+			}
+		}
+
+		if($save) {
+			$defaultFields = implode("\n", $lines); 
+			if($defaultFields != $this->defaultFields) { 
+				$data['defaultFields'] = implode("\n", $lines); 
+				$this->wire('modules')->saveModuleConfigData($this, $data); 
+			}
+		}
+
+
+		return $fields;
+	}
+
+	/**
+	 * Install the CSV export module
+	 *
+	 * Add a new 'Export Files' field and make visible in user profile. 
+	 *
+	 */
+	public function ___install() {
+		// install a special files field to user profile
+		$field = $this->wire('fields')->get(self::userFiles); 
+		if(!$field) {
+			$field = new Field();
+			$field->name = self::userFiles; 
+			$field->type = $this->wire('modules')->get('FieldtypeFile'); 
+			$field->label = $this->_('Export Files'); 
+			$field->set('entityEncode', 1); 
+			$field->set('noUpload', 1); 
+			$field->set('extensions', "csv json txt");
+			$field->save();
+			$this->message("Added files field: $field->name"); 
+		}
+
+		$fieldgroup = $this->wire('fieldgroups')->get('user'); 
+		if(!$fieldgroup->hasField($field)) {
+			$fieldgroup->add($field); 
+			$fieldgroup->save();
+			$this->message("Added files field to fieldgroup: $fieldgroup->name"); 
+		}
+
+		$data = $this->wire('modules')->getModuleConfigData('ProcessProfile'); 
+		$data['profileFields'][] = self::userFiles; 
+		$this->wire('modules')->saveModuleConfigData('ProcessProfile', $data); 
+		$this->message("Made files field editable in user profile"); 
+	}
+
+	/**
+	 * Uninstall CSV export module
+	 *
+	 * Note that we don't delete the user files field that was added. 
+	 *
+	 */
+	public function ___uninstall() {
+		$name = self::userFiles; 
+		$this->message("Please note that the field $name added by this module has not been deleted. Delete this manually if the files are no longer needed."); 
+	}
+
+	/**
+	 * Module config screen
+	 * 
+	 * @param array $data
+	 * @return InputfieldWrapper
+	 *
+	 */
+	public static function getModuleConfigInputfields(array $data) {
+		$form = new InputfieldWrapper();
+		$f = wire('modules')->get('InputfieldTextarea'); 
+		$f->name = 'defaultFields'; 
+		$f->label = __('Default Export Fields per Lister'); 
+		$f->description = __('Each line should contain: "lister_name=field1,field2,field3" to serve as a default. No need to set this here, as it will be automatically set when the action runs.'); 
+		if(isset($data['defaultFields'])) $f->attr('value', $data['defaultFields']); 
+		$f->collapsed = Inputfield::collapsedYes; 
+		$form->add($f); 
+		return $form; 
+	}
+}
+
+

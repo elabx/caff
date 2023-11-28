@@ -1,0 +1,5 @@
+site/assets
+vendor
+site/config.php
+php_temp
+.index-*

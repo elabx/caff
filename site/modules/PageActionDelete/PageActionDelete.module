@@ -1,0 +1,151 @@
+<?php namespace ProcessWire;
+
+/**
+ * ListerPro Page action that deletes or trashes pages
+ * 
+ * @property int $delete_type
+ * @property int $delete_confirm
+ *
+ */ 
+
+class PageActionDelete extends PageAction implements Module {
+
+	public static function getModuleInfo() {
+		return array(
+			'title' => __('Page Action: Delete/Trash Pages', __FILE__), 
+			'summary' => __('Action that trashes or deletes a page.'), 
+			'version' => 4, 
+			'author' => 'Ryan Cramer', 
+			'permission' => 'page-action-delete', 
+			'permissions' => array('page-action-delete' => 'Page Action: Delete/Trash Pages'),
+		); 
+	}
+	
+	// delete_type: move to trash
+	const typeTrash = 1; 
+	
+	// delete_type: delete permanently
+	const typeDelete = 2; 
+	
+	// delete:type: delete permanently recursive (including children)
+	const typeDeleteRecursive = 3;
+
+	/**
+	 * Labels for delete types
+	 * 
+	 * @var array
+	 * 
+	 */
+	protected $labels = array();
+
+	/**
+	 * Construct
+	 * 
+	 */
+	public function __construct() {
+		parent::__construct();
+	
+		// default delete type: trash
+		$this->set('delete_type', self::typeTrash);
+		$this->set('delete_confirm', 0);
+		
+		$this->labels = array(
+			self::typeTrash => $this->_('Move to trash')
+		);
+		
+		if($this->wire()->user->isSuperuser()) {
+			$this->labels[self::typeDelete] = $this->_('Delete permanently');
+			$this->labels[self::typeDeleteRecursive] = $this->_('Delete permanently (including children)');
+		}
+	}
+
+	/**
+	 * Apply action to page
+	 *
+	 * @param Page $item
+	 * @return bool
+	 *
+	 */
+	protected function ___action($item) {
+
+		// make sure item is deletable by current user
+		if(!$item->deleteable()) return false; 
+		
+		$type = (int) $this->delete_type;
+		$test = !((int) $this->delete_confirm);
+		
+		if(!isset($this->labels[$type])) return false;
+
+		$isSuperuser = $this->wire()->user->isSuperuser();
+		$success = false;
+		$testLabel = $this->_('TEST') . ' ';
+
+		if($type === self::typeTrash) {
+			if(!$item->isTrash()) {
+				if($test) {
+					$this->message($testLabel . $this->_('Trash') . " - $item->path");
+				} else {
+					$this->wire()->pages->trash($item);
+				}
+				$success = true; 
+			}
+		} else if($type === self::typeDelete && $isSuperuser) {
+			if($item->numChildren) {
+				$this->error($item->id . ' - ' . $this->_('Not deleted because it has children.'));
+			} else if($test) {
+				$this->message($testLabel . $this->_('Delete') . " - $item->path");
+				$success = true;
+			} else {
+				$success = $this->wire()->pages->delete($item); 
+			}
+		} else if($type === self::typeDeleteRecursive && $isSuperuser) {
+			if($test) {
+				$this->message($testLabel . $this->_('Delete Recursive') . " - $item->path " . 
+					$this->_('(and all pages below it)')
+				);
+				$success = true;
+			} else {
+				$success = $this->wire()->pages->delete($item, true);
+			}
+		}
+
+		return $success; 	
+	}
+
+	/**
+	 * Config
+	 * 
+	 * @return InputfieldWrapper
+	 * 
+	 */
+	public function ___getConfigInputfields() {
+
+		$fieldset = parent::___getConfigInputfields();
+		$fieldset->label = $this->_('Delete/Trash Pages');
+		
+		/** @var InputfieldRadios $f */
+		$f = $this->wire('modules')->get('InputfieldRadios');
+		$f->attr('name', 'delete_type');
+		$f->label = $this->_('Deletion type');
+		foreach($this->labels as $value => $label) {
+			$f->addOption($value, $label);
+		}
+		$f->attr('value', (int) $this->delete_type);
+		$fieldset->add($f); 
+
+		/** @var InputfieldRadios $f */
+		$f = $this->wire('modules')->get('InputfieldRadios'); 
+		$f->attr('name', 'delete_confirm'); 
+		$f->label = $this->_('We recommend you test the action first'); 
+		$f->skipLabel = Inputfield::skipLabelHeader;
+		$f->addOption(0, $this->_('TEST what will get deleted/trashed first (recommended)'));
+		$f->addOption(1, $this->_('Delete/trash pages now (be careful!)'));
+		$f->attr('value', (int) $this->delete_confirm); 
+		$fieldset->add($f);
+
+		return $fieldset; 
+	}
+
+
+}
+

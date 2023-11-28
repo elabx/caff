@@ -1,0 +1,473 @@
+<?php namespace ProcessWire;
+
+/**
+ * ProcessWire ProFields Repeater Matrix Fieldtype
+ * 
+ * THIS IS A COMMERCIAL MODULE: DO NOT DISTRIBUTE.
+ * This file should NOT be uploaded to GitHub or available for download on any public site.
+ *
+ * Copyright 2019 by Ryan Cramer
+ * ryan@processwire.com
+ * 
+ * PWPFRMF
+ * 
+ * @method array getMatrixTypes(Field $field, $indexType = 'name', $valueType = 'type')
+ *
+ */
+
+class FieldtypeRepeaterMatrix extends FieldtypeRepeater implements ConfigurableModule {
+
+	public static function getModuleInfo() {
+		return array(
+			'title' => __('ProFields: Repeater Matrix', __FILE__), // Module Title
+			'summary' => __('Commercial module (Fieldtype) providing multi-type repeaters.', __FILE__), // Module Summary
+			'version' => 5,
+			'autoload' => false,
+			'installs' => 'InputfieldRepeaterMatrix',
+			'requires' => 'ProcessWire>=3.0.98, FieldtypeRepeater>=104'
+			);
+	}
+	
+	public function __construct() {
+		parent::__construct();
+		$this->wire('modules')->get('FieldtypeRepeater');
+		// todo: move this to store repeatersRootPageID natively in this module
+		$configData = $this->wire('modules')->getModuleConfigData('FieldtypeRepeater');
+		$this->set('repeatersRootPageID', $configData['repeatersRootPageID']);
+		require_once(__DIR__ . '/RepeaterMatrixPage.php');
+		require_once(__DIR__ . '/RepeaterMatrixPageArray.php');
+	}
+	
+	/**
+	 * Get the class to use for this Fieldtype's Inputfield
+	 * 
+	 * @return string
+	 * 
+	 */
+	protected function getInputfieldClass() {
+		return 'InputfieldRepeaterMatrix';
+	}
+
+	/**
+	 * Get the class used for repeater Page objects
+	 *
+	 * @return string
+	 *
+	 */
+	public function getPageClass() {
+		return __NAMESPACE__ . "\\RepeaterMatrixPage";
+	}
+
+	/**
+	 * Get the class used for repeater PageArray objects
+	 *
+	 * @return string
+	 *
+	 */
+	public function getPageArrayClass() {
+		return __NAMESPACE__ . "\\RepeaterMatrixPageArray";
+	}
+
+	/**
+	 * Return the repeater matrix template used by Field, i.e. repeater_name
+	 *
+	 * @param Field $field
+	 * @return Template
+	 * @throws WireException
+	 *
+	 */
+	protected function getRepeaterTemplate(Field $field) {
+		$template = parent::getRepeaterTemplate($field);
+		if(!$template->fieldgroup->hasField('repeater_matrix_type')) {
+			$f = $this->wire('fields')->get('repeater_matrix_type');
+			$template->fieldgroup->add($f);
+			$template->fieldgroup->save();
+			//$this->message("Added field 'repeater_matrix_type' to template '$template'", Notice::debug);
+		}
+		return $template;
+	}
+
+	/**
+	 * Return the repeater matrix template used by Field (same as getRepeaterTemplate except that it’s public)
+	 * 
+	 * @param Field $field
+	 * @return Template
+	 * 
+	 */
+	public function getMatrixTemplate(Field $field) {
+		return $this->getRepeaterTemplate($field);
+	}
+
+	/**
+	 * Get the current matrix field, using the given one if provided or auto-detect if not
+	 * 
+	 * @param Field|null $field
+	 * @return null|Field
+	 * @throws WireException
+	 * 
+	 */
+	protected function getMatrixField($field = null) {
+		if($field === null && method_exists($this, 'getLastAccessField')) {
+			$field = $this->getLastAccessField();
+		}
+		if(!$field) {
+			throw new WireException('Invalid or unknown field');
+		}
+		return $field;
+	}
+	
+	/**
+	 * Get the max quantity of matrix types (highest 'n' value used by matrix type in $field)
+	 *
+	 * @param Field $field
+	 * @return int
+	 *
+	 */
+	public function getMaxMatrixTypes(Field $field) {
+		static $maxMatrixTypes = array();
+		if(isset($maxMatrixTypes[$field->id])) return $maxMatrixTypes[$field->id];
+		$max = 0;
+		foreach(array_keys($field->getArray()) as $property) {
+			if(strpos($property, 'matrix') !== 0 || !strpos($property, '_name')) continue;
+			list($x, $n) = explode('matrix', "x$property", 2);
+			if($x) {}
+			list($n, $x) = explode('_', $n);
+			if($x) {}
+			if(ctype_digit($n) && ((int) $n) > $max) $max = (int) $n;
+		}
+		if($max) {
+			$maxMatrixTypes[$field->id] = $max;
+		} else {
+			$max = 5;
+		}
+		return $max;
+	}
+
+
+	/**
+	 * Get all information available for each matrix type in an array of arrays indexed by type name
+	 * 
+	 * Unless only a specific property is requested (via the `get` option), returned array includes the following:
+	 * 
+	 *  - `type` (int): Type number
+	 *  - `name` (string): Matrix type name
+	 *  - `prefix` (string): Prefix used in identifying this type’s settings in the Field object
+	 *  - `label` (string): Matrix type label
+	 *  - `label123…` (string): Matrix type label per-language (if multi-language) where “123…” is language ID, for all languages.
+	 *  - `sort` (int): Sort value
+	 *  - `file` (string): Optional PHP render file (whether it exists or not)
+	 *  - `head` (string): Optional definition for item headers
+	 *  - `field` (Field): Field that these matrix types are for
+	 *  - `fields` (array): Array of Field objects used by this matrix type (in template context), indexed by Field name
+	 *  - `fieldIDs` (array): Array of Field IDs used by this matrix type
+	 * 
+	 * If a specific property is requested (via the `get` option) then returned array is of strings or ints, depending on what
+	 * was requested. If the `type` option is used then the returned array wil be only info for that type, or if combined with 
+	 * the `get` option then return value is just the property for that type (int or string). 
+	 * 
+	 * A blank array or null is returned if you asked for something that isn’t there. 
+	 * 
+	 * @param Field|null $field
+	 * @param array $options 
+	 *  - `get` (string): Optionally specify a single property to get for each item rather than everything (default='')
+	 *  - `type` (string|int): Get info only for this type rather than all (default='')
+	 *  - `index` (string): What property to use for array index, can be 'type' (number) or 'name' (default='name')
+	 * @return array|string|null
+	 * 
+	 */
+	public function getMatrixTypesInfo(Field $field = null, array $options = array()) {
+		
+		$defaults = array(
+			'get' => '',
+			'type' => '', 
+			'index' => 'name',
+			'language' => null, 
+		);
+		
+		$options = array_merge($defaults, $options);
+		$field = $this->getMatrixField($field);
+		$get = $options['get'];
+		
+		/** @var Config $config */
+		$config = $this->wire('config');
+		
+		/** @var Languages|null $languages */
+		$languages = $this->wire('languages');
+		$matrixTypes = array();
+		
+		for($n = 1; $n <= $this->getMaxMatrixTypes($field); $n++) {
+			
+			$prefix = "matrix{$n}_";
+			$name = $field->get($prefix . "name");
+			if(empty($name)) continue;
+			if($options['type'] && ($name !== $options['type'] && "$n" !== "$options[type]")) continue;
+			
+			$a = array();
+			if(!$get || $get === 'type' || $get === 'n') $a['type'] = $n;
+			if(!$get || $get === 'name') $a['name'] = $name;
+			if(!$get || $get === 'label') $a['label'] = $field->get($prefix . "label");
+			if(!$get || $get === 'prefix') $a['prefix'] = $prefix;
+			if(!$get || $get === 'sort') $a['sort'] = (int) $field->get($prefix . "sort");
+			if(!$get || $get === 'file') $a['file'] = $config->urls->fieldTemplates . "$field->name/$name.php";
+			if(!$get || $get === 'head') $a['head'] = $field->get($prefix . "head"); 
+			if(!$get || $get === 'field') $a['field'] = $field;
+			if(!$get || $get === 'fieldIDs') $a['fieldIDs'] = $field->get($prefix . "fields");
+			
+			if(!$get || $get === 'fields') {
+				$fieldIDs = $field->get($prefix . 'fields');
+				$a['fields'] = array();
+				if(!is_array($fieldIDs)) $fieldIDs = array();
+				$template = $this->getMatrixTemplate($field); 
+				foreach($fieldIDs as $fieldID) {
+					$f = $template->fieldgroup->getFieldContext((int) $fieldID); 
+					if($f) $a['fields'][$f->name] = $f;
+				}
+			}
+			
+			if($languages && (!$get || ($get !== 'label' && strpos($get, 'label') === 0))) {
+				foreach($languages as $language) {
+					if($language->isDefault()) continue;
+					$key = "label$language->id";
+					if($get && $get !== $key) continue;
+					$a[$key] = (string) $field->get($prefix . "label$language");
+				}
+			}
+		
+			if($get) $a = $a[$get];
+			if($options['index'] === 'name') {
+				$matrixTypes[$name] = $a;
+			} else {
+				$matrixTypes[$n] = $a;
+			}
+		}
+		
+		if(!empty($options['type'])) {
+			return count($matrixTypes) === 1 ? reset($matrixTypes) : null;
+		}
+		
+		return $matrixTypes;
+	}
+
+	/**
+	 * Get verbose information array for all RepeaterMatrix fields in the system 
+	 * 
+	 * Return value is array indexed by field name, where each `[ … ]` is a return value from 
+	 * the getMatrixTypesInfo() method:
+	 * ~~~~~
+	 * [
+	 *   'foo' => [ … ], 
+	 *   'bar' => [ … ],
+	 *   'baz' => [ … ],
+	 * ]
+	 * ~~~~~
+	 * 
+	 * @return array
+	 * 
+	 */
+	public function getAllMatrixTypesInfo() {
+		$a = array();
+		foreach($this->getMatrixFields() as $name => $field) {
+			$a[$name] = $this->getMatrixTypesInfo($field); 
+		}
+		return $a;
+	}
+
+	/**
+	 * Get an array of all RepeaterMatrix fields
+	 * 
+	 * @return array|Field[] RepeaterMatrix Field objects indexed by field name
+	 * 
+	 */
+	public function getMatrixFields() {
+		$a = array();
+		foreach($this->wire('fields') as $field) {
+			if($field->type instanceof FieldtypeRepeaterMatrix) {
+				$a[$field->name] = $field;
+			}
+		}
+		return $a;
+	}
+
+	/**
+	 * Return an array of just matrix types in format [ typeName => typeNumber ]
+	 * 
+	 * @param Field|null $field 
+	 * @param string $indexType What matrix property to use for the array indexes (default='name')
+	 * @param string $valueType What matrix property to use for the array values (default='type')
+	 * @return array
+	 * @throws WireException if given invalid field
+	 * 
+	 */
+	public function ___getMatrixTypes(Field $field = null, $indexType = 'name', $valueType = 'type') {
+
+		$matrixTypes = array();
+		$field = $this->getMatrixField($field); 
+		$language = $valueType === 'label' && $this->wire('languages') ? $this->wire('user')->language : null;
+		if($language && $language->isDefault()) $language = null;
+		
+		for($n = 1; $n <= $this->getMaxMatrixTypes($field); $n++) {
+			
+			$name = $field->get("matrix{$n}_name");
+			if(empty($name)) continue;
+			$prefix = "matrix{$n}_";
+		
+			if($indexType === 'name') {
+				$index = $name;
+			} else if($indexType === 'type') {
+				$index = $n;
+			} else {
+				$index = $field->get($prefix . $indexType);
+				if($index === null) continue;
+			}
+				
+			if($valueType === 'name') {
+				$value = $name;
+			} else if($valueType === 'type') {
+				$value = $n;
+			} else if($valueType === 'label' && $language) {
+				$value = $field->get($prefix . "label$language->id");
+				if(empty($value)) $value = $field->get($prefix . 'label'); 
+			} else {
+				$value = $field->get($prefix . $valueType);
+			}
+				
+			$matrixTypes[$index] = $value;
+		}
+		
+		return $matrixTypes;
+	}
+
+	/**
+	 * Return matrix type (integer) for given name, or boolean false if not found
+	 * 
+	 * @param string $name
+	 * @param Field|null $field
+	 * @return bool|int
+	 * 
+	 */
+	public function getMatrixTypeByName($name, Field $field = null) {
+		$types = $this->getMatrixTypes($field);
+		return isset($types[$name]) ? $types[$name] : false;
+	}
+
+	/**
+	 * Get the label for the given matrix type (name or number)
+	 * 
+	 * @param int|string $type
+	 * @param Field|null $field
+	 * @param Language|int|string|null $language
+	 * @return string
+	 * 
+	 */
+	public function getMatrixTypeLabel($type, Field $field = null, $language = null) {
+		if($language) {
+			if(!is_object($language)) $language = $this->wire('languages')->get($language);
+		} else {
+			$language = $this->wire('user')->language;
+		}
+		if($language) {
+			if(!$language->id) throw new WireException("Unknown language"); 
+			$a = $this->getMatrixTypesInfo($field, array('type' => $type));
+			$key = $language->isDefault() ? "label" : "label$language->id";
+			$label = empty($a[$key]) ? $a['label'] : $a[$key];
+		} else {
+			$label = $this->getMatrixTypesInfo($field, array('get' => 'label', 'type' => $type));
+		}
+		return $label;
+	}
+	
+	/**
+	 * Return configuration fields definable for each FieldtypePage
+	 *
+	 * @param Field $field
+	 * @return InputfieldWrapper
+	 *
+	 */
+	public function ___getConfigInputfields(Field $field) {
+
+		$inputfields = parent::___getConfigInputfields($field);
+
+		/** @var InputfieldText $f */
+		$f = $inputfields->getChildByName('repeaterTitle');
+		$f->parent->remove($f);
+
+		/** @var InputfieldRadios $f */
+		$f = $inputfields->getChildByName('repeaterLoading');
+		if($f->value == FieldtypeRepeater::loadingOff) $f->value = FieldtypeRepeater::loadingNew;
+		$f->description = '';
+		$f->removeOption(FieldtypeRepeater::loadingOff);
+
+		$template = $this->getRepeaterTemplate($field);
+		require_once(__DIR__ . '/config.php');
+		$helper = new FieldtypeRepeaterMatrixConfigHelper($field, $template);
+
+		return $helper->getConfigInputfields($inputfields);
+	}
+
+	/**
+	 * Save field configuration
+	 *
+	 * @param Field $field
+	 * @param Template $template
+	 * @param Page $parent
+	 *
+	 */
+	protected function ___saveConfigInputfields(Field $field, Template $template, Page $parent) {
+		require_once(__DIR__ . '/config.php');
+		$helper = new FieldtypeRepeaterMatrixConfigHelper($field, $template);
+		$helper->saveConfigInputfields();
+		parent::___saveConfigInputfields($field, $template, $parent);
+	}
+
+
+	/**
+	 * Just here to fulfill ConfigurableModule interface
+	 * 
+	 * @param array $data
+	 * @return InputfieldWrapper
+	 *
+	 */
+	public function getModuleConfigInputfields(array $data) {
+		$inputfields = parent::getModuleConfigInputfields($data);
+		return $inputfields;
+	}
+
+	/**
+	 * Install the module
+	 *
+	 */
+	public function ___install() {
+		// install 'repeater_matrix_type' field that will be added to each RepeaterMatrix page
+		$field = $this->wire('fields')->get('repeater_matrix_type');
+		if(!$field) {
+			$field = $this->wire(new Field());
+			$field->type = $this->modules->get("FieldtypeInteger");
+			$field->name = 'repeater_matrix_type';
+			$field->label = 'Repeater matrix type';
+			$field->flags = Field::flagSystem | Field::flagPermanent | Field::flagAutojoin;
+			$field->save();
+			$this->message("Created Field: $field->name");
+		}
+	}
+
+	/**
+	 * Uninstall the module
+	 *
+	 */
+	public function ___uninstall() {
+		foreach($this->wire('fields') as $field) {
+			if($field->type->className() == $this->className()) {
+				throw new WireException("Cannot uninstall because this fieldtype is used by $field->name");
+			}
+		}
+		$field = $this->wire('fields')->get('repeater_matrix_type');
+		if($field) {
+			$field->flags = Field::flagSystemOverride;
+			$field->flags = 0;
+			$this->wire('fields')->delete($field);
+			$this->message("Removed field: $field");
+		}
+	}
+
+}
+

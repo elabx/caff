@@ -1,0 +1,379 @@
+<?php
+namespace ProcessWire;
+
+//Add
+function addLink($context){
+    $user = wire('user');
+    if($user->hasPermission('page-edit', $context)) {
+        echo " <a href='/acpw/page/add/?parent_id={$context->id}' class='text-edit'><i class='bi bi-plus-square'></i></a>";
+    }
+}
+
+//Breadcrumbs
+function crumbs($context){
+	echo "<nav class='breadcrumbs mb-2'><small>";
+	foreach($context->parents as $parent) {
+    if ($parent->id == 1){
+      echo "";
+    }else{
+      echo "<span class='breadcrumb-item'><a href='$parent->url'>{$parent->title}</a></span>";
+    }
+	}
+	echo "</small></nav>";
+}
+
+//Content
+function content($page){
+    echo "
+    <h1 class='mt-4'>{$page->title}</h1>
+    <p class='lead'>{$page->summary}</p>
+    $page->texarea
+    ";
+}
+
+//Edit
+function editLink($context){
+    $user = wire('user');
+    if($user->hasPermission('page-edit', $context)) {
+        echo " <a href='/acpw/page/edit/?id={$context->id}' class='text-edit small'><i class='bi bi-pencil-square'></i></a>";
+    }
+}
+
+//Event formatting
+function eventFormat($event){
+	//$startDM = date("d M", strtotime($event->date_start));
+    $startDM = strftime("%d %b", strtotime($event->date_start));
+	$startDMY = strftime("%d %b %Y", strtotime($event->date_start));
+	$startHI = date("H:i", strtotime($event->date_start));
+	$endDMY = strftime("%d %b %Y", strtotime($event->date_end));
+	if ($startDMY == $endDMY){ //If one-day event
+		if ($startHI == '00:00'){ //If no time set, show just day
+			echo "<div>{$endDMY}</div>";
+		}else{ //else show times
+			echo "<div>{$endDMY} | ";
+			echo $startHI;
+			echo " - ";
+			echo date('H:i', strtotime($event->date_end));
+			echo " {$event->timezone->title}</div>";
+		}
+	}else{
+		echo "<div>{$startDM}-{$endDMY}</div>";
+	}
+
+}
+
+//Events list
+function eventList($events){
+	$settings = wire('pages')->get(2901);
+	$today = date("Y-m-d");
+	$comingevents = wire('pages')->find("id=$events, date_start>=$today, sort=date_start");
+	foreach ($comingevents as $event) {
+		//Break up months and years with headings
+		$month = strftime("%B", strtotime($event->date_start));
+		$year = date("Y", strtotime($event->date_start));
+    if ($event->link != "") {
+      $eventTitle = "<a href='{$event->link}'>$event->title</a>";
+    }else{
+      $eventTitle = $event->title;
+    }
+		echo "<div class='eventslist'><div class='mb-3 pb-3 border-bottom'><h6>";
+
+		eventFormat($event);
+		echo "</h6>
+    $eventTitle
+		<small class='d-block text-uppercase'>$event->text";
+        editLink($event);
+        echo "</small></div>";
+		$prevMonth = $month;
+		$prevYear = $year;
+	}
+
+		$eventpg = wire('pages')->get(1073);
+		echo "<a href='https://arctic-council.org{$eventpg->url}' class='btn btn-primary mb-5 eventsmore'>";
+		$settings = wire('pages')->get(2901);
+		echo $settings->translations->seeall;
+		echo "</a></div>";
+}
+
+//Events full info list
+function eventsFull($events){
+  $settings = wire('pages')->get(2901);
+    echo "
+    <ul class='list p-0'>";
+    foreach ($events as $event) {
+      //date
+      $start = date("d M", strtotime($event->date_start));
+      $end = date("d M", strtotime($event->date_end));
+      $year = date("Y", strtotime($event->date_start));
+      $week = date("W", strtotime($event->date_start));
+      //time
+      $starttime = date("H:i", strtotime($event->date_start));
+      $endtime = date("H:i", strtotime($event->date_end));
+      $timezone = $event->text2;
+      $eventTime = "$starttime - $endtime ($timezone)";
+      if ($starttime == "00:00") {
+        $eventTime = "";
+      }
+      //one day events
+      if ( $start == $end) {$end = "";}
+      if ($settings->translations->week != "") {
+        $weekLabel = $settings->translations->week;
+      }else{
+        $weekLabel = "Week";
+      }
+      echo "
+      <li>
+      <div class='row py-4 eventInfo'>
+       <div class='col-md-2 border-right'>
+        <div class='h3'>
+          {$start}<br/>
+          {$end}
+        </div>
+         {$weekLabel} {$week}<br/>
+         {$year}
+         </div>
+          <div class='col-md-6 pl-md-4'>
+            <h4 class='eventTitle h5'>{$event->title}</h4>";
+            echo $eventTime;
+            if ($event->textarea != "") {echo $event->textarea;}
+        echo "</div>
+
+      <div class='col-md-4 eventDetails small'>
+        <p><i class='bi bi-geo-alt mr-3'></i>{$event->text}</p>
+        ";
+        if ($event->link != "") {
+          echo "<p><i class='bi bi-globe2 mr-3'></i><a href='{$event->link}'>Website</a></p>";
+        }
+    		foreach ($event->event_select as $option) {
+    			echo "<p><i class='bi bi-info-circle  mr-3'></i>$option->title</p>";
+    		}
+        editLink($event);
+      echo "</div>
+      </div>
+      </li>";
+      }
+      echo "</ul>";
+  //end function
+
+  }
+
+//Image resize and crop
+//imgSize($page->image, 1000, 400);
+function imgSize($imgpg, $width, $height){
+  echo "<picture>";
+  $settings = wire('pages')->get(1309);
+  $lazy="loading='lazy'";
+	if ($imgpg->images != ""){ //If target pg has images
+		$img = $imgpg->images->first;
+	}elseif ($imgpg->image != ""){ //If target pg has image
+		$img = $imgpg->image;
+	}else{ // if no image found, placeholder image
+		//$img = $settings->images->getTag('placeholder');
+		return;
+	}
+	if ($img != ""){
+		$img = $img->size($width, $height);
+        //$img_xs = $img->width(480);
+        //global $imgDesc;
+        $imgDesc = addslashes($img->description);
+        if ($img->text != ""){
+          $imgCredit = addslashes($img->text);
+          $imgCredit = "© $imgCredit";
+        }
+
+        echo "
+        <source srcset='{$img->webp->url}' type='image/webp'>
+        <source srcset='{$img->url}' type='image/jpeg'>";
+        echo "<img
+            src='$img->url'
+            class='img-fluid'
+            alt='$imgDesc'
+            title='$imgDesc $imgCredit'
+            $lazy
+        />";
+	}
+  echo "</picture>";
+
+  // sizes='(max-width: 768px) {$img_xs->width}px'
+  // srcset='{$img_xs->url} {$img_xs->width}w, {$img->url} {$img->width}w'
+}
+
+//Image background resize and crop
+//imgBG($page->image, 1000, 400);
+function imgBG($imgpg, $width, $height){
+	$settings = wire('pages')->get(2901);
+	if ($imgpg->images != ""){ //If target pg has images
+		$img = $imgpg->images->first;
+	}elseif ($imgpg->image != ""){ //If target pg has image
+		$img = $imgpg->image;
+	}else{
+        // if no image found, placeholder image
+		$img = $settings->image;
+	}
+	if ($img != ""){
+		$img = $img->size($width, $height);
+        echo $img->url;
+	}
+}
+
+//Image figure and attribution
+function imgDetails($img){
+  if ($img->text != ""){
+    $imgCredit = "{$img->text}<br/>© {$img->text2}";
+  }
+  echo "<figcaption class='credit'>{$imgCredit}</figcaption>";
+  unset($imgCredit);
+}
+
+//Newslist
+function newsList ($context){
+	$page = wire('page');
+
+    if ($context != ""){
+		foreach($context as $result) {
+
+			echo "<div class='row mb-5'>
+				<div class='col-md-4 pr-2'><a href='{$result->httpUrl}' class='point-tr'>";
+					imgSize($result, 480, 350);
+				    echo "</a>
+				</div>
+				<div class ='col-md-8 px-4'>
+                    <h4><a href='{$result->httpUrl}'>{$result->title}</a></h4>";
+      				truncate($result->summary, 170);
+                      editLink($result);
+      				echo "<div class='small text-muted mt-2'>{$result->date}</div>
+				</div>
+			</div>";
+		}
+
+        //See all button only on pages that don't list all news
+        if ($page->name != "news"){
+            echo "<a href='/news/' class='btn btn-primary mb-5 seeall'>";
+            echo "See all</a>";
+        }
+	}
+}
+//OAR get pub by pub handle
+function OARpub ($context){
+    $oarRoot = "https://oaarchive.arctic-council.org/rest/";
+    $oarHandle = substr($context, strrpos($context, '/') + 1); //get id from URL
+
+    /*Get Pubs*/
+    $pub = json_decode(file_get_contents("{$oarRoot}handle/11374/{$oarHandle}?expand=bitstreams"));
+
+    $pubTitle = $pub->name; //title
+    foreach ($pub->bitstreams as $bitstream) {
+        $bundle = $bitstream->name;
+        if (strpos($bundle, '.jpg') !== false){
+            $pubImg = $bitstream->name; //thumb filename
+        }
+    }
+
+    echo "<div class='OARpub'>
+    <a href='$context'>
+    <img src='https://oaarchive.arctic-council.org/bitstream/handle/11374/{$oarHandle}/{$pubImg}' class='img-fluid'>
+    $pubTitle
+    </a>
+    </div>";
+}
+
+//Pagination
+function pagination ($context){
+	echo $context->renderPager(array(
+	'nextItemLabel' => "Next",
+	'previousItemLabel' => "Prev",
+	'listMarkup' => "<span class='MarkupPagerNav'>{out}</span>",
+	'itemMarkup' => "<span class='{class}'>{out}</span>",
+	'linkMarkup' => "<a href='{url}'><span>{out}</span></a>"
+));
+}
+
+//People
+function people($people){
+    echo "<div class='flex'>";
+    foreach ($people as $person){
+        echo "
+        <div class='flex3'>
+            <small>
+                <strong>$person->title</strong><br/>
+                $person->text<br/>
+                $person->text2<br/>
+                $person->text3<br/>
+                <a href='mailto:{$person->email}'>Email</a>
+                <p>$person->textarea</p>
+            </small>
+        </div>";
+    }
+    echo "</div>"
+}
+
+//Recommended
+function recommended($context){
+	if ($context->count >= 1){
+    if ($context->count == 8){$hidden = "d-none";}else{$hidden = "";} //If exactly 8, hide collapser
+    $rand = rand(1, 99999); //get random id so multiple collapses on a page don't affect each other.
+		echo "<section class='recommended mb-5'>
+  		<div class='row justify-content-center'>";
+      $i = 0;
+  		foreach ($context as $item){
+              echo "<div class='col-md-3 bg-dark bg-image border' style='background-image: linear-gradient(180deg, rgba(51,51,51,1) 0%, rgba(82,82,82,.5) 80%, rgba(82,82,82,0) 100%), url(";
+                  imgBG($item, 480, 480);
+                  echo ")'>";
+                  echo "<a href='{$item->url}'><div class='p-4'>
+                      <h5>{$item->title}</h5>
+                  </div></a>
+              </div>";
+              if ($i == 7) {
+                $settings = wire('pages')->get(2901);
+                echo "
+                </div><!--end row-->
+                <div class='row text-center collapser'>
+                    <a data-toggle='collapse' role='button' href='#collapse_{$rand}' class='btn btn-dark col mt-2 $hidden'></a>
+                </div>
+                <div class='collapse row' id='collapse_{$rand}'>";
+              } //collapse more after 6 items
+          $i++;
+  		}
+      if ($i >= 7) {echo "</div><!-- end collapse -->";}
+  		echo "
+  		</div>
+		</section>";
+    }
+}
+
+//Submenu
+function submenu($context){
+	echo "<section class='container nav-submenu'><div class='row'>";
+	foreach ($context->children as $item){
+        echo "<div class='col'><a href='$item->url'>$item->title</a></div>";
+    }
+    echo "</div></section>";
+}
+
+//Tag generation
+function tags($context){
+	$allFields = $context->getFields();
+	echo "<div class='tags'>";
+	foreach ($allFields as $related){
+		if (strpos($related, 'related') === 0) {
+			foreach ($context->$related as $tag){
+                if ($tag->viewable == 'true'){
+		   		 echo "<a href='$tag->url' class='d-inline-block mr-3 small'>$tag->title</a>";
+                }
+			}
+		}
+	}
+	echo "</div>";
+}
+
+//Truncate text
+function truncate($text, $length){
+	if (mb_strlen($text) > $length) {
+		$summary = mb_substr($text, 0, $length) . "...";
+	} else {
+		$summary = $text;
+	}
+	echo $summary;
+}
+
+?>
