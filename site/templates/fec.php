@@ -102,13 +102,13 @@ if ($page->id == "2073"){ //If main or tag page
         $tags = WireArray::new($tags)->implode("|");
 
         $tagparents = $pages->find("name=ecosystem|species|habitat");
-        $selector = [
-          "parent" => 2073
-        ];
+        $selector = new Selectors();
         foreach($tagparents as $tag){
             $existing_filter = $tag->children("name=$tags");
             if($existing_filter->count){
-                $selector["tag_{$tag->name}"] = $existing_filter;
+                foreach($existing_filter as $filter){
+                    $selector->add(new SelectorEqual("tag_{$tag->name}", $filter));
+                }
             }
         }
         //var_dump($selector);
