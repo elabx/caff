@@ -61,11 +61,11 @@ if ($page->id == "2073"){ //If main or tag page
 
 
     //If page segments, show tags
-    if(!empty($segments)){
+    if(count($input->get->tag)){
 
     //TAG-SPECIFIC CONTENT
 
-        foreach ($refs as $ref){
+        /*foreach ($refs as $ref){
             echo "$ref->textarea";
 
             //publications
@@ -89,19 +89,21 @@ if ($page->id == "2073"){ //If main or tag page
             $url = str_replace($ref->id.'/', '', $thisurl);
             echo "<a href='$url' class='btn btn-outline-secondary mb-2 mr-2'>$ref->title X</a>";
 
-        }
+        }*/
 
         //Apply filters
-        $a1 = $refs->explode('id');
-        $fecpages = $pages->find("parent=2073");
-        $fecs = new PageArray();
-        foreach ($fecpages as $f){
+        //$a1 = $refs->explode('id');
+        $tags = $input->get->array('tag', 'pageName');
+        $tags = WireArray::new($tags)->implode("|");
+        $fecpages = $pages->find("parent=2073, tag_ecosystem|tag_habitat|tag_species=$tags");
+        //$fecs = new PageArray();
+        /*foreach ($fecpages as $f){
             $tags = $f->referencing; //all tags of this fec.
             $a2 = $tags->explode('id');
             if (count(array_intersect($a1, $a2)) == count($a1)) {
               $fecs->add($f);
             }
-        }
+        }*/
 
         // foreach ($template->fields as $field) {
         //     if ($field->type instanceof FieldtypePage) {
@@ -110,7 +112,7 @@ if ($page->id == "2073"){ //If main or tag page
         //     }
         // }
 
-        pageList($fecs);
+        pageList($fecpages);
         $fecs = "";
     }else{
         //FEC list
