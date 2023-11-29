@@ -90,29 +90,34 @@ if ($page->id == "2073"){ //If main or tag page
             echo "<a href='$url' class='btn btn-outline-secondary mb-2 mr-2'>$ref->title X</a>";
 
         }*/
+        $tags = array_values($input->get->array('tag', 'pageName'));
+        foreach($tags as $tag){
+            $tag = $pages->get($tag);
+            $tag_url = "";
+            echo "<a href='$tag_url' class='btn btn-outline-secondary mb-2 mr-2'>{$tag->title} <i class=\"bi bi-x\"></i></a>";
+        }
 
         //Apply filters
-        //$a1 = $refs->explode('id');
-        $tags = $input->get->array('tag', 'pageName');
+
         $tags = WireArray::new($tags)->implode("|");
-        $fecpages = $pages->find("parent=2073, tag_ecosystem|tag_habitat|tag_species=$tags");
-        //$fecs = new PageArray();
-        /*foreach ($fecpages as $f){
-            $tags = $f->referencing; //all tags of this fec.
-            $a2 = $tags->explode('id');
-            if (count(array_intersect($a1, $a2)) == count($a1)) {
-              $fecs->add($f);
+
+        $tagparents = $pages->find("name=ecosystem|species|habitat");
+        $selector = [
+          "parent" => 2073
+        ];
+        foreach($tagparents as $tag){
+            $existing_filter = $tag->children("name=$tags");
+            if($existing_filter->count){
+                $selector["tag_{$tag->name}"] = $existing_filter;
             }
-        }*/
+        }
+        //var_dump($selector);
+        $fecpages = $pages->find($selector);
+        bd($fecpages);
 
-        // foreach ($template->fields as $field) {
-        //     if ($field->type instanceof FieldtypePage) {
-        //         $results = $pages->find("$field=$refs, parent=2073");
-        //             $fecs->add($results);
-        //     }
-        // }
-
+        echo "<div hx-swap-oob='true' id='filtered-blocks'>";
         pageList($fecpages);
+        echo "</div>";
         $fecs = "";
     }else{
         //FEC list
