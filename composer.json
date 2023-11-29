@@ -15,9 +15,16 @@
   ],
   "require": {
     "php": ">=5.3.8",
-    "ext-gd": "*"
+    "ext-gd": "*",
+    "lostkobrakai/migrations": "^0.3.2"
   },
   "autoload": {
     "files": [ "wire/core/ProcessWire.php" ]
+  },
+  "config": {
+    "allow-plugins": {
+      "hari/pw-module": true,
+      "wireframe-framework/processwire-composer-installer": true
+    }
   }
 }

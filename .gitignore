@@ -3,3 +3,5 @@ vendor
 site/config.php
 php_temp
 .index-*
+/.idea
+site/modules/Migrations
