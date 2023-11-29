@@ -104,8 +104,10 @@ if ($page->id == "2073"){ //If main or tag page
         $tagparents = $pages->find("name=ecosystem|species|habitat");
         $selector = new Selectors();
         foreach($tagparents as $tag){
+            // If tags being filtered, found more than 0
             $existing_filter = $tag->children("name=$tags");
             if($existing_filter->count){
+                // Add one selector per filter for AND logic
                 foreach($existing_filter as $filter){
                     $selector->add(new SelectorEqual("tag_{$tag->name}", $filter));
                 }
@@ -113,7 +115,6 @@ if ($page->id == "2073"){ //If main or tag page
         }
         //var_dump($selector);
         $fecpages = $pages->find($selector);
-        bd($fecpages);
 
         echo "<div hx-swap-oob='true' id='filtered-blocks'>";
         pageList($fecpages);
