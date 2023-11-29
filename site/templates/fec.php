@@ -36,8 +36,8 @@ header('Content-Disposition: attachment; filename="fecs.xml"');
     echo "</fecs>";
     exit();
     }
-    
-include("includes/header.php"); 
+
+include("includes/header.php");
 $template = $page->template;
 
 //IF tag or main page
@@ -50,48 +50,26 @@ if ($page->id == "2073"){ //If main or tag page
         $s = $pages->get($s);
         $refs->add($s);
     }
-    
+
     content($page);
-    include("fields/blocks.php"); 
+    include("fields/blocks.php");
      //echo "[To add: search]";
 
-/////FILTER
-    $tagparents = $pages->find("id=3417|3423|3460");
-    $path = "./";
-    
-    echo "<div class='row mb-4'>";
-    //if match in segments and $tagparents->children
-    
-    foreach ($tagparents as $tag){
-    echo "<div class='col-md'>   
-        <select class='form-control small' onchange='location = this.value;'>
-            <option selected disabled>{$tag->title}</option>";
-            foreach ($tag->children as $child){
-                // //$count = $child->references("template=$template")->count;
-                $selected = "";
-                if($refs->has($child)){
-                   $selected = "selected";
-                }
-                echo "<option value='{$path}/{$child->id}' {$selected}>{$child->title}</option>";
-            }
-        echo "</select>";
-        echo "</div>"; //end col
-        
-    }
-    echo "</div>"; //end row  
+    echo wireRenderFile('includes/filters.php');
 
-   
+
+
 
     //If page segments, show tags
     if(!empty($segments)){
 
     //TAG-SPECIFIC CONTENT
-        
+
         foreach ($refs as $ref){
             echo "$ref->textarea";
-            
+
             //publications
-            if($ref->parent->id == "3467"){ 
+            if($ref->parent->id == "3467"){
                 echo "<hr/>
                 <div class='row py-4'>";
                     echo "<div class='col-md-2'><a href='$ref->link'><img src='{$ref->image->height(200)->url}' alt='publication'></a></div>";
@@ -106,11 +84,11 @@ if ($page->id == "2073"){ //If main or tag page
                 <hr/>"; //end row
 
             }
-            
+
             //show tags with remove link
             $url = str_replace($ref->id.'/', '', $thisurl);
             echo "<a href='$url' class='btn btn-outline-secondary mb-2 mr-2'>$ref->title X</a>";
-               
+
         }
 
         //Apply filters
@@ -124,11 +102,11 @@ if ($page->id == "2073"){ //If main or tag page
               $fecs->add($f);
             }
         }
-        
+
         // foreach ($template->fields as $field) {
         //     if ($field->type instanceof FieldtypePage) {
         //         $results = $pages->find("$field=$refs, parent=2073");
-        //             $fecs->add($results); 
+        //             $fecs->add($results);
         //     }
         // }
 
@@ -145,20 +123,20 @@ if ($page->id == "2073"){ //If main or tag page
     }
 
 
-    
-}else{ 
-    //FEC page
-    
 
-    
+}else{
+    //FEC page
+
+
+
     echo "<div class='row'>";
         echo "<div class='col-md-7'>";
 
 
             echo "<h1>$page->title</h1>
             <div class='font-italic mb-4'>$page->summary</div>";
-           
-            
+
+
                 //////// TAGS
                 echo "<ul class='list-unstyled small'>";
                 foreach ($page->fields as $field) {
@@ -171,24 +149,24 @@ if ($page->id == "2073"){ //If main or tag page
                             }
                             echo "</li>";
                         }
-                        
+
                     }
                 }
                 echo "</ul>";
-                
+
         echo "</div>";
-        
-        
-         
+
+
+
         //Image
         echo "<div class='col-md-4 offset-md-1'>";
             imgSize($page, 600, 600);
             echo "<div class='credit py-3'>{$page->image->text}<br/>{$page->image->text2}</div>";
-        echo "</div>"; 
+        echo "</div>";
     echo "</div>"; //row
-    
-     include("fields/blocks.php"); 
-    
+
+     include("fields/blocks.php");
+
 //////// FEC TABLE
     echo "<div class='table-responsive breakout px-5'>
     <a href='./xml'>Download this table as XML</a>
@@ -196,14 +174,14 @@ if ($page->id == "2073"){ //If main or tag page
     //Get table fields
     $tabletemplate = $templates->get("fec_table");
     $tablefields = $tabletemplate->fields;
-    
+
     echo "<tr>";
     foreach ($tablefields as $field){
         $fieldLabel = $tabletemplate->fieldgroup->getField($field, true)->label; //Template-specific label
         echo "<th>$fieldLabel</th>";
     }
     echo "</tr>";
-    
+
     foreach ($page->references("template=fec_table") as $item){
         //Edit link
         if($user->hasPermission('page-publish')) {
@@ -218,31 +196,31 @@ if ($page->id == "2073"){ //If main or tag page
             $type = $tf->type;
             echo "<td>";
             //Select fields
-            if ($type == "FieldtypeOptions") { 
+            if ($type == "FieldtypeOptions") {
                foreach ($item->$tf as $t){
-                   echo "{$t->title} "; 
+                   echo "{$t->title} ";
                }
-            } 
-            elseif ($type == "FieldtypePage") { 
+            }
+            elseif ($type == "FieldtypePage") {
                foreach ($item->$tf as $t){
-                   echo "{$t->title} "; 
+                   echo "{$t->title} ";
                }
-            } 
+            }
             elseif ($type == "FieldtypePageTitle"){
                 echo $edit;
             }
             else {
-                echo $item->$tf; 
-            }         
+                echo $item->$tf;
+            }
             echo "</td>";
         }
         echo "</tr>";
     }
     echo "</table>";
     echo "</div>";
-    
+
      echo"<div class='py-3'>$page->fec_notes</div>";
-    
+
     //List experts
      $experts = $page->references("template=expert");
      if (!empty($experts)){
@@ -252,11 +230,11 @@ if ($page->id == "2073"){ //If main or tag page
 }
 
 
- 
 
 
 
-include("includes/footer.php"); 
+
+include("includes/footer.php");
 
 // $csv = "{$config->urls->files}{$page->id}/fec.csv";
 // if($input->urlSegment('download')) {
