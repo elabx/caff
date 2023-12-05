@@ -1,6 +1,5 @@
 <?php
 namespace ProcessWire;
-use League\Csv\Writer;
 
 //If XML export
 if ($input->urlSegment1 == 'xml') {
@@ -37,40 +36,6 @@ header('Content-Disposition: attachment; filename="fecs.xml"');
     echo "</fecs>";
     exit();
     }
-
-if($input->post->bool('csv')){
-    $selected = $input->post->item;
-    foreach($selected as $i => $value){
-        $selected[$i] = $sanitizer->pageName($value);
-    }
-    $selected = array_keys($selected);
-    //bd($selected);
-    //bd($input->post->getArray());
-    if(count($selected)){
-        $selected = implode("|", $selected);
-        $items = $pages->find("name=$selected");
-
-        $csv = Writer::createFromFileObject(new \SplTempFileObject());
-
-        /** @var FecPage $item */
-        $first_page = $items->first();
-
-        $csv->insertOne($first_page->getCsvHeaders());
-
-        /** @var FecPage $item */
-        foreach($items as $item){
-            $csv->insertOne($item->getCsvDataRow());
-        }
-        header('Content-type: text/csv');
-        header('Content-Disposition: attachment; filename="fecs.csv"');
-        //bd(wireEncodeJSON($items->getArray()));
-        //$csv->insertOne(['firstname', 'lastname', 'email']);
-        //$csv->insertAll($selected);
-    }
-
-
-}
-
 
 include("includes/header.php");
 $template = $page->template;
@@ -152,7 +117,7 @@ if ($page->id == "2073"){ //If main or tag page
         $fecpages = $pages->find($selector);
 
         echo "<div hx-swap-oob='true' id='filtered-blocks'>";
-        pageList($fecpages, ['render_checkboxes' => true]);
+        pageList($fecpages);
         echo "</div>";
         $fecs = "";
     }else{
@@ -161,7 +126,7 @@ if ($page->id == "2073"){ //If main or tag page
         foreach ($ecosystems as $eco){
             echo "<h2 class='border-bottom'>$eco->title</h2>";
             $ecofecs = $pages->find("tag_ecosystem=$eco, sort=sort");
-            pageList($ecofecs, ['render_checkboxes' => true]);
+            pageList($ecofecs);
         }
     }
 

@@ -1,4 +1,4 @@
-<?php
+<?php namespace ProcessWire;
     //Listing of events tagged with this page
     $events=$page->references("template=event");
     showEvents($events);

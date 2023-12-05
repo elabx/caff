@@ -123,11 +123,11 @@ button.navbar-toggler {border-width:0px;}
 
 /* darkened image with text overlay, horizontal */
 .block_list, .block_projects {height:100%; padding:0; text-transform: uppercase; }
-.block_list .col, .block_projects .col {flex-basis:240px; flex-grow: 0; position:relative; }
+/* .block_list .col, .block_projects .col {flex-basis:240px; flex-grow: 0; position:relative; } */
 .block_list .col:hover img, .block_projects .col:hover img {opacity: .7; transition: opacity .5s}
 .block_list a, .block_projects a {height:100%; width:100%; text-decoration:none;}
 .block_list a img, .block_projects a img {z-index: 2; opacity: 1; transition: opacity .5s}
-.block_list .col div, .block_projects .col div {
+.block_list .col  .headline, .block_projects .col  .headline {
   /*background-color:rgba(255,255,255,1);*/
   font-size:.8rem;
   font-weight:bold;
@@ -190,7 +190,9 @@ a .pubName{font-size:14px;margin-right:40px;}
 .textblock ol li {margin-bottom:.4rem;}
 .textblock ul {padding-left:2rem;}
 .textblock ul li {list-style-type:circle; padding-bottom: .4rem;}
+    /*
 	@media (max-width: 992px) {.row>div {padding:1rem 0rem;} }
+    */
 /*.row .textblock {padding:1rem;}*/
 /*.textblock {max-width: 670px;}*/
 
@@ -288,5 +290,16 @@ img.align_right, .align_right{
 .border {
      border:none !important;
 }
+.page-list-select{
+    right:15px;
+    bottom:10px;
+}
 
+.page-list-select > label{
+    background:white;
+    display:flex;
+    backgorund: rgba(255, 255, 255, 0.38);
+    padding: 10px;
+    border-radius: 5px;
+}
 
