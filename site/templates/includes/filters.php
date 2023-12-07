@@ -103,7 +103,7 @@ if(count($input->get->tag)){
     foreach ($categories as $cat) {
         $items_per_category = $pages->find("$categories_field=$cat, sort=sort");
         if(!$items_per_category->count) continue;
-        echo "<h2 class='border-bottom'>$cat->title</h2>";
+        echo "<h2 class='mt-4 border-bottom'>$cat->title</h2>";
         pageList($items_per_category, ['render_checkboxes' => true]);
     }
 

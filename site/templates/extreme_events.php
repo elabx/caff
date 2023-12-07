@@ -63,7 +63,7 @@ if($input->get->bool('csv')){
             $csv->insertOne($item_data);
 
         }
-        $csv->output("fecs.csv");
+        $csv->output("extreme_events.csv");
         die;
     }
 }
