@@ -56,7 +56,7 @@ if ( $page->title_alt != "" ){$titleFull = $page->title_alt;}else{$titleFull = $
    <!-- <link href="https://fonts.googleapis.com/css2?family=Jost:wght@300;400&family=Open+Sans:wght@400;700&display=swap" rel="stylesheet">-->
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.8.3/font/bootstrap-icons.css">
   	<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@4.6.1/dist/css/bootstrap.min.css" integrity="sha384-zCbKRCUGaJDkqS1kPbPd7TveP5iyJE0EjAuZQTgFLD2ylzuqKfdKlfG/eSrtxUkn" crossorigin="anonymous">
-    <script src="https://unpkg.com/htmx.org@1.9.9"></script>
+    <script src="https://unpkg.com/htmx.org@1.9.9/dist/htmx.js"></script>
       <link rel="stylesheet" href="<?php echo $httptemplates; ?>styles/main.css">
 
         <!-- Google tag (gtag.js) Google Analytics  -->

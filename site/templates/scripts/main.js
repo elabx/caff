@@ -9,10 +9,11 @@ htmx.on("htmx:load", function(evt) {
             let picked = e.currentTarget.value;
             let selector = "#filter-submit option[value=" + picked +  "]";
             let option = document.querySelector(selector);
-            console.log(option);
+            //console.log(option);
             option.selected = true;
             option.setAttribute('selected', 'selected');
-        })
+            option.parentElement.dispatchEvent(new Event('change'));
+        });
     })
 
     /*let view_toggles = util.$$('.events-view-toggles-mobile input[type=radio]');

@@ -15,7 +15,7 @@ class FecPage extends Page
     function getCsvHeaders()
     {
         $headers = [];
-        foreach($this->templates->get('fex_table')->fieldgroup as $f){
+        foreach($this->wire->templates->get('fec_table')->fieldgroup as $f){
             //$this->fields->get($f);
             /** @var $f Field */
             $headers[] = $f->getLabel();
@@ -24,22 +24,29 @@ class FecPage extends Page
     }
 
 
-    function getCsvDataRow()
+    function getCsvDataRows()
     {
         $data = [];
-        $fg = $this->templates->get('fex_table')->fieldgroup;
-        foreach($this->pages->find("template=fec_table, tag_fec=$this ") as $p){
+        $fg = $this->wire->templates->get('fec_table')->fieldgroup;
+        $fecs = $this->wire->pages->find("template=fec_table, tag_fec=$this ");
+        //bd($fecs);
+        foreach($fecs as $p){
+            $item_data = [];
             foreach($fg as $f){
-                switch((string)$f->type){
-                    case "FildtypePage":
-                        $data[] = $f->getUnformated($f)->explode('title');
+                $type = (string)$f->getFieldtype();
+                switch($type){
+                    case "FieldtypePage":
+                        $set_pages = $p->get($f->name);
+                        $item_data[] = $set_pages->implode(',','title');
+                        break;
+                    case "FieldtypeOptions":
+                        $item_data[] = $p->get($f->name)->title;
                         break;
                     default:
-                        $data[] = $p->get($f);
-                    default:
+                        $item_data[] = $p->get($f->name);
                 }
-
             }
+            $data[] = $item_data;
         }
         return $data;
     }
