@@ -72,6 +72,24 @@ if($input->get->bool('csv')){
 
 
 include("includes/header.php");
+?>
+
+<ul class="nav nav-tabs">
+    <?php $extreme_events = $pages->get('template=extreme_events');?>
+
+    <li class="nav-item">
+        <a class="nav-link active" href="<?=$page->url?>">
+            <?=$page->title?>
+        </a>
+    </li>
+    <li class="nav-item">
+        <a class="nav-link" href="<?=$extreme_events->url?>">
+            <?=$extreme_events->title?>
+        </a>
+    </li>
+</ul>
+
+<?php
 $template = $page->template;
 
 //IF tag or main page

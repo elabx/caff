@@ -1,4 +1,4 @@
-<?php
+<?php namespace ProcessWire;
 //Initialize
 namespace ProcessWire;
 $files->include($config->paths->templates."includes/functions.php");
