@@ -15,19 +15,21 @@
 
                         </div>
 
-                        <?php if ($options['render_checkboxes']): ?>
-                            <div class="page-list-select position-absolute">
-                                <label>
-                                    <span class="sr-only">Select for export</span>
-                                    <input class=""
-                                          name="item[<?= $child->name ?>]"
-                                          type="checkbox">
-                                </label>
-                            </div>
-                        <?php endif ?>
                     </div>
 
                 </a>
+
+                <?php if ($options['render_checkboxes']): ?>
+                    <div class="page-list-select position-absolute">
+                        <label>
+                            <span class="sr-only">Select for export</span>
+                            <input class=""
+                                   name="item[<?= $child->name ?>]"
+                                   type="checkbox">
+                        </label>
+                    </div>
+                <?php endif ?>
+
             </div>
         <?php endforeach; ?>
     </div>

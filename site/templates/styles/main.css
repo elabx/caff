@@ -298,8 +298,14 @@ img.align_right, .align_right{
 .page-list-select > label{
     background:white;
     display:flex;
-    backgorund: rgba(255, 255, 255, 0.38);
+    background: rgba(255, 255, 255, 0.38);
     padding: 10px;
     border-radius: 5px;
+    border: 1px solid lightgrey;
 }
 
+
+.page-list-select > label:hover{
+    background-color: lightgrey;
+    border: 1px solid #c9c9c9;
+}

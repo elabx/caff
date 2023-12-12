@@ -77,7 +77,7 @@ include("includes/header.php");
 <ul class="nav nav-tabs">
     <?php
     $extreme_events = $pages->get('template=extreme_events');
-    $fec_monitoring =  $pages->get('template=fec_monitoring');
+    $fec_monitoring =  $pages->get('template=fec');
     ?>
 
     <li class="nav-item">
@@ -97,7 +97,7 @@ $template = $page->template;
 
 //IF tag or main page
 //bd($page);
-if ($page->template->name == "fec_monitoring"){ //If main or tag page
+if ($page->template->name !== "fec"){ //If main or tag page
     $thisurl = $input->httpUrl();
     $segments = $input->urlSegments();
     //Turn segments into tags
