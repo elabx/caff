@@ -93,7 +93,8 @@ include("includes/header.php");
 $template = $page->template;
 
 //IF tag or main page
-if (!$input->urlSegment1){ //If main or tag page
+//bd($page);
+if ($page->template->name !== "fec"){ //If main or tag page
     $thisurl = $input->httpUrl();
     $segments = $input->urlSegments();
     //Turn segments into tags
