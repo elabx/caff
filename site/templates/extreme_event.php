@@ -48,7 +48,7 @@ include("includes/header.php");
     <div class='col-md-7'>
 
         <h1><?= $page->title ?></h1>
-        <div class='font-italic mb-4'><?= $page->summary ?></div>
+        <div class='font-italic mb-4'><?= $page->extreme_event_description ?></div>
 
         <ul class='list-unstyled small'>
             <?php foreach ($page->fields as $field): ?>
@@ -140,11 +140,7 @@ include("includes/header.php");
                     <?php foreach ($fields as $field): ?>
                         <td>
                             <?php
-                            //d($page->fields);
-                            //d($field->name);
                             $value = $page->get($field->name);
-                            //d($field);
-                            //d($value);
                             switch ($value) {
                                 case $value instanceof Page:
                                     echo $value->title;
