@@ -107,24 +107,20 @@ include("includes/header.php");
               'extreme_events_suggested_method_monitor',
               'extreme_event_expected_temporal_scale'
             ]
-          ]/*,
-          'links'       => [
-            'title'  => 'Reference/links',
-            'fields' => 'extreme_event_references'
-          ]*/
+          ]
         ]
         ?>
         <thead>
         <?php foreach ($table_sections as $section): ?>
-            <td>
-                <span class="text-center d-block w-100 font-weight-bold">
+            <td class="px-0">
+                <span class="d-block w-100 font-weight-bold">
                     <?= $section['title'] ?>
                 </span>
                 <table>
                     <thead>
                     <?php foreach ($section['fields'] as $field): ?>
                         <?php $fieldLabel = $page->fieldgroup->getField($field, true)->label; ?>
-                        <td class=" px-0">
+                        <td class="">
                             <span style="min-height:80px; display:block; min-width:300px;">
                                   <?= $fieldLabel ?>
                             </span>
@@ -155,7 +151,7 @@ include("includes/header.php");
                 </table>
             </td>
         <?php endforeach; ?>
-        <td>
+        <td class="px-0">
             <span class="text-center font-weight-bold">References/links</span>
             <table>
                 <thead>
