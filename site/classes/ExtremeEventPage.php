@@ -8,7 +8,7 @@ class ExtremeEventPage extends Page
     function getCsvHeaders()
     {
         $headers = [];
-        foreach($this->template->fieldgroup as $f){
+        foreach($this->template->fieldgroup->not("name=image") as $f){
             //$this->fields->get($f);
             /** @var $f Field */
             $headers[] = $f->getLabel();
@@ -20,7 +20,7 @@ class ExtremeEventPage extends Page
     function getCsvDataRows()
     {
         $data = [];
-        foreach($this->template->fieldgroup->filter('name!=image') as $f){
+        foreach($this->template->fieldgroup->not('name=image') as $f){
             $type = (string)$f->getFieldtype();
             switch($type){
                 case "FieldtypePage":
@@ -31,8 +31,14 @@ class ExtremeEventPage extends Page
                         $data[]  = $set_pages->title;
                     }
                     break;
-                case "FieldtypeOptions":
+               /* case "FieldtypeOptions":
                     $data[] = $this->get($f->name)->title;
+                    break;*/
+                case "FieldtypeRepeater":
+                    $value = $this->get($f->name)->implode(PHP_EOL, function ($item) {
+                        return $item->textarea;
+                    });
+                    $data[] = wire('sanitizer')->lines($value);
                     break;
                 default:
                     $data[] = $this->get($f->name);

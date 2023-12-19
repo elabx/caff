@@ -43,9 +43,9 @@
         <tr>
             <?php
             $tabletemplate = $templates->get("fec_table");
-            $tablefields = $tabletemplate->fields;
+            $tablefields = $tabletemplate->fields->find("name!=title");
             foreach ($tablefields as $field):
-                $fieldLabel = $tabletemplate->fieldgroup->getField($field, true)->label;
+                $fieldLabel = $tabletemplate->fieldgroup->find("name!=title")->getField($field, true)->label;
                 ?>
                 <th><?= $fieldLabel ?></th>
             <?php endforeach; ?>

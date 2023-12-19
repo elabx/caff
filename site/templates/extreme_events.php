@@ -2,41 +2,6 @@
 namespace ProcessWire;
 use League\Csv\Writer;
 
-//If XML export
-if ($input->urlSegment1 == 'xml') {
-    header('Content-type: text/xml');
-    header('Content-Disposition: attachment; filename="fecs.xml"');
-    echo "<?xml version='1.0' encoding='UTF-8'?>";
-    echo "<fecs>";
-    $filteredFields = $templates->get("fec_table")->fieldgroup;
-    foreach ($page->children as $fec){
-        echo "<fec>";
-        foreach ($filteredFields as $filteredField){
-            $fieldContent = $fec->$filteredField;
-            $fieldContent = str_replace("&", "&#038;", $fieldContent);
-            $fieldType = $filteredField->type;
-            echo "<{$filteredField}_>";
-            if ($fieldType == 'FieldtypePage') {
-                $getPages = $pages->find("id=$fieldContent");
-                $str = "";
-                foreach ($getPages as $id){
-                    $str .= "{$id->title},  ";
-                }
-                echo rtrim($str, ",  ");
-            }elseif ($fieldType == 'FieldtypeOptions'){
-                foreach ($fec->$filteredField as $f) {
-                    echo "{$f->title} ";
-                }
-            }else{
-                echo strip_tags($fieldContent);
-            }
-            echo "</{$filteredField}_>";
-        }//foreach fields
-        echo "</fec>";
-    }//foreach projects
-    echo "</fecs>";
-    exit();
-}
 
 if($input->get->bool('csv')){
     $selected = $input->get->item;
@@ -72,24 +37,15 @@ if($input->get->bool('csv')){
 include("includes/header.php");
 ?>
 
-<ul class="nav nav-tabs">
-    <?php $fec = $pages->get('template=fec');?>
-    <li class="nav-item">
-        <a class="nav-link" href="<?=$fec->url?>">
-            <?=$fec->title?>
-        </a>
-    </li>
-    <li class="nav-item">
-        <a class="nav-link active" href="<?=$page->url?>">
-            <?=$page->title?>
-        </a>
-    </li>
-</ul>
 
 <?php
+echo wireRenderFile('includes/monitoring_menu');
+
+
 $template = $page->template;
 
 //IF tag or main page
+
 if (!$input->urlSegment1){ //If main or tag page
     $thisurl = $input->httpUrl();
     $segments = $input->urlSegments();
@@ -110,7 +66,6 @@ if (!$input->urlSegment1){ //If main or tag page
       'categories_selector' => "parent.path=/tags/extreme-events/",
       'categories_field' => "tag_extreme_events",
     ]);
-
 
 }else{
     echo wireRenderFile('includes/extreme_events_detail');

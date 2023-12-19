@@ -74,25 +74,13 @@ if($input->get->bool('csv')){
 include("includes/header.php");
 ?>
 
-<ul class="nav nav-tabs">
-    <?php
-    $extreme_events = $pages->get('template=extreme_events');
-    $fec_monitoring =  $pages->get('template=fec_monitoring');
-    ?>
-
-    <li class="nav-item">
-        <a class="nav-link active" href="<?=$fec_monitoring->url?>">
-            <?=$fec_monitoring->title?>
-        </a>
-    </li>
-    <li class="nav-item">
-        <a class="nav-link" href="<?=$extreme_events->url?>">
-            <?=$extreme_events->title?>
-        </a>
-    </li>
-</ul>
 
 <?php
+
+if($page->name == "monitoring") {
+    echo wireRenderFile('includes/monitoring_menu');
+}
+
 $template = $page->template;
 
 //IF tag or main page

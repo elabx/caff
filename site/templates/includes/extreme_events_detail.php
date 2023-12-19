@@ -42,39 +42,16 @@
     <table class='table table-striped small'>
         <tr>
             <?php
-            $tabletemplate = $templates->get("fec_table");
-            $tablefields = $tabletemplate->fields;
-            foreach ($tablefields as $field):
-                $fieldLabel = $tabletemplate->fieldgroup->getField($field, true)->label;
+            /*$tabletemplate = $templates->get("fec_table");
+            $tablefields = $tabletemplate->fields;*/
+            //bd($input->urlSegment1);
+            foreach ($page->fieldgroup->not("name=title|image") as $field):
+                $fieldLabel = $page->fieldgroup->getField($field, true)->label;
                 ?>
                 <th><?= $fieldLabel ?></th>
             <?php endforeach; ?>
         </tr>
-        <?php foreach ($page->references("template=fec_table") as $item): ?>
-            <tr>
-                <?php
-                if ($user->hasPermission('page-publish')):
-                    $edit = "<a href='{$item->editUrl}'>{$item->title}</a>";
-                else:
-                    $edit = $item->title;
-                endif;
-                foreach ($tablefields as $tf):
-                    $type = $tf->type;
-                    echo "<td>";
-                    if ($type == "FieldtypeOptions" || $type == "FieldtypePage"):
-                        foreach ($item->$tf as $t):
-                            echo "{$t->title} ";
-                        endforeach;
-                    elseif ($type == "FieldtypePageTitle"):
-                        echo $edit;
-                    else:
-                        echo $item->$tf;
-                    endif;
-                    echo "</td>";
-                endforeach;
-                ?>
-            </tr>
-        <?php endforeach; ?>
+
     </table>
 </div>
 
