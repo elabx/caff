@@ -62,7 +62,7 @@ if (!$input->urlSegment1){ //If main or tag page
 
     echo wireRenderFile('includes/filters.php', [
       'filters_selector' => "name=spatial-scale|temporal-scale",
-      'items_selector' => "parent.name=extreme-events",
+      'items_selector' => "template=extreme_event",
       'categories_selector' => "parent.path=/tags/extreme-events/",
       'categories_field' => "tag_extreme_events",
     ]);

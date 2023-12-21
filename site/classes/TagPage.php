@@ -16,6 +16,15 @@ class TagPage extends Page
         return array_filter($input);
     }
 
+    public function inSearch($param_name){
+        $array_values = $this->wire->input->get($param_name);
+        if (in_array($this->object->name, $array_values)) {
+            return  true;
+        } else {
+             false;
+        }
+    }
+
     public function removeSelfFromURL($param_name)
     {
 

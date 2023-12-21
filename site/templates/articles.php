@@ -1,4 +1,4 @@
-<?php
+<?php namespace ProcessWire;
 include("includes/header.php"); 
 content ($page);
  
