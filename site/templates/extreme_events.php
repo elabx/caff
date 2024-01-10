@@ -13,11 +13,11 @@ if($input->get->bool('csv')){
     bd($input->post->getArray());*/
     if(count($selected)){
         $selected = implode("|", $selected);
-        $items = $pages->find("name=$selected");
+        $items = $pages->find("template=extreme_event_category,name=$selected");
 
         $csv = Writer::createFromFileObject(new \SplTempFileObject());
 
-        /** @var FecPage $first_page */
+        /** @var ExtremeEventCategoryPage $first_page */
         $first_page = $items->first();
         //bd($first_page->getCsvHeaders());
         $headers = $first_page->getCsvHeaders();
@@ -25,7 +25,7 @@ if($input->get->bool('csv')){
         /** @var FecPage $item */
         foreach($items as $item){
             $item_data = $item->getCsvDataRows();
-            $csv->insertOne($item_data);
+            $csv->insertAll($item_data);
 
         }
         $csv->output("extreme_events.csv");
@@ -62,8 +62,8 @@ if (!$input->urlSegment1){ //If main or tag page
 
     echo wireRenderFile('includes/filters.php', [
       'filters_selector' => "name=spatial-scale|temporal-scale",
-      'items_selector' => "template=extreme_event",
-      'categories_selector' => "parent.path=/tags/extreme-events/",
+      'items_selector' => "template=extreme_event_category",
+      'categories_selector' => "",
       'categories_field' => "tag_extreme_events",
     ]);
 

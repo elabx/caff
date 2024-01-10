@@ -1,47 +1,46 @@
 <?php namespace ProcessWire;
 
-
 if ($input->urlSegment1 == 'xml') {
     header('Content-type: text/xml');
     header("Content-Disposition: attachment; filename=\"extreme_event_{$page->name}.xml\"");
     echo "<?xml version='1.0' encoding='UTF-8'?>";
     echo "<extremeEvents>";
-    $filteredFields = $page->fieldgroup->not('name=title|image');
-    echo "<extremeEvent>";
-    echo "<name>{$page->title}</name>";
-    foreach ($filteredFields as $filteredField) {
-        $fieldContent = $page->get($filteredField->name);
-        $fieldContent = str_replace("&", "&#038;", $fieldContent);
-        $fieldType = $filteredField->type;
-        echo "<{$filteredField->name}_>";
-        if ($fieldType == 'FieldtypePage') {
-            $getPages = $pages->find("id=$fieldContent");
-            $str = "";
-            foreach ($getPages as $id) {
-                $str .= "{$id->title},  ";
+    $filteredFields = $page->children->first->fieldgroup->not('name=extreme_event_impacts|extreme_event_impacts_END|extreme_event_detecting_and_monitoring|extreme_event_detecting_and_monitoring_END|extreme_event_section_description|extreme_event_section_description_END|title|image');
+    foreach ($page->children as $child){
+        echo "<extremeEvent>";
+        echo "<name>{$child->title}</name>";
+        foreach ($filteredFields as $filteredField) {
+            $fieldContent = $child->get($filteredField->name);
+            $fieldContent = str_replace("&", "&#038;", $fieldContent);
+            $fieldType = $filteredField->type;
+            echo "<{$filteredField->name}_>";
+            if ($fieldType == 'FieldtypePage') {
+                $getPages = $pages->find("id=$fieldContent");
+                $str = "";
+                foreach ($getPages as $id) {
+                    $str .= "{$id->title},  ";
+                }
+                echo rtrim($str, ",  ");
+            } elseif ($fieldType == 'FieldtypeOptions') {
+                foreach ($child->$filteredField as $f) {
+                    echo "{$f->title} ";
+                }
+            } else {
+                echo strip_tags($fieldContent);
             }
-            echo rtrim($str, ",  ");
-        } elseif ($fieldType == 'FieldtypeOptions') {
-            foreach ($fec->$filteredField as $f) {
-                echo "{$f->title} ";
-            }
-        } else {
-            echo strip_tags($fieldContent);
+            echo "</{$filteredField->name}_>";
         }
-        echo "</{$filteredField}_>";
+        echo "</extremeEvent>";//foreach projects
     }
-    echo "</extremeEvent>";//foreach projects
+
     echo "</extremeEvents>";
     exit();
 }
 
 
-
-
 include("includes/header.php");
 
 ?>
-
 
 
 <div class='my-4 row'>
@@ -79,7 +78,7 @@ include("includes/header.php");
 
 <div class='table-responsive breakout px-5'>
     <a href='./xml'>Download this table as XML</a>
-    <table class='table table-striped small'>
+    <table class='table table-bordered table-striped small'>
         <?php
         $table_sections = [
           'description' => [
@@ -110,33 +109,45 @@ include("includes/header.php");
           ]
         ]
         ?>
-        <thead>
-        <?php foreach ($table_sections as $section): ?>
-            <td class="px-0">
-                <span class="d-block w-100 font-weight-bold">
-                    <?= $section['title'] ?>
-                </span>
-                <table>
-                    <thead>
-                    <?php foreach ($section['fields'] as $field): ?>
-                        <?php $fieldLabel = $page->fieldgroup->getField($field, true)->label; ?>
-                        <td class="">
-                            <span style="min-height:80px; display:block; min-width:300px;">
-                                  <?= $fieldLabel ?>
-                            </span>
+        <tr>
+            <?php foreach ($table_sections as $section): ?>
+                <td colspan="<?= count($section['fields']) ?>" class="">
+                        <span class="d-block w-100 font-weight-bold">
+                            <?= $section['title'] ?>
+                        </span>
+                </td>
+            <?php endforeach; ?>
+            <td>&nbsp</td>
+        </tr>
 
-                        </td>
-                    <?php endforeach ?>
-                    </thead>
-                    <tbody>
+        <tr>
+            <?php foreach ($table_sections as $section): ?>
+                <?php foreach ($section['fields'] as $field): ?>
+                    <?php $fieldLabel = $page->children->first->fieldgroup->getField($field, true)->label; ?>
+                    <td class="">
+                            <span style="min-height:80px; display:block; min-width:300px;">
+                                  <?php echo $fieldLabel ?>
+                            </span>
+                    </td>
+                <?php endforeach ?>
+            <?php endforeach ?>
+            <td>
+                Reference/Links
+            </td>
+
+        </tr>
+
+        <?php foreach ($page->children as $child): ?>
+            <tr>
+                <?php foreach ($table_sections as $section): ?>
                     <?php
                     $fields = implode("|", $section['fields']);
-                    $fields = $page->fields->find("name=$fields");
+                    $fields = $child->fields->find("name=$fields");
                     ?>
                     <?php foreach ($fields as $field): ?>
                         <td>
                             <?php
-                            $value = $page->get($field->name);
+                            $value = $child->get($field->name);
                             switch ($value) {
                                 case $value instanceof Page:
                                     echo $value->title;
@@ -147,31 +158,17 @@ include("includes/header.php");
                             ?>
                         </td>
                     <?php endforeach; ?>
-                    </tbody>
-                </table>
-            </td>
-        <?php endforeach; ?>
-        <td class="px-0">
-            <span class="text-center font-weight-bold">References/links</span>
-            <table>
-                <thead>
-                    <td class="px-0">
-                        <span style="min-height:80px; display:block; min-width:300px;">&nbsp</span>
-                    </td>
-                </thead>
-
-                <tbody>
-                    <td>
-                        <?php
-                        $value = $page->extreme_event_references->implode(function ($item) {
-                            return "<li>{$item->textarea}</li>";
-                        }, ['prepend' => '<ul>', 'append' => '</ul>']);
-                        echo $value;
-                        ?>
-                    </td>
-                </tbody>
-            </table>
-        </td>
+                <?php endforeach ?>
+                <td>
+                    <?php
+                    $value = $child->extreme_event_references->implode(function ($item) {
+                        return "<li>{$item->textarea}</li>";
+                    }, ['prepend' => '<ul>', 'append' => '</ul>']);
+                    echo $value;
+                    ?>
+                </td>
+            </tr>
+        <?php endforeach ?>
 
         </thead>
 

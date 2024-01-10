@@ -98,14 +98,19 @@ if(count($input->get->tag)){
     pageList($fecpages, ['render_checkboxes' => true]);
     $fecs = "";
 }else{
-    //FEC list
-    $categories = $pages->find($categories_selector);
-    foreach ($categories as $cat) {
-        $items_per_category = $pages->find("$items_selector, $categories_field=$cat, sort=sort");
-        if(!$items_per_category->count) continue;
-        echo "<h2 class='mt-4 border-bottom'>$cat->title</h2>";
-        pageList($items_per_category, ['render_checkboxes' => true]);
+
+    if(!$categories_selector){
+        pageList( $pages->find("$items_selector, sort=sort"), ['render_checkboxes' => true]);
+    }else{
+        $categories = $pages->find($categories_selector);
+        foreach ($categories as $cat) {
+            $items_per_category = $pages->find("$items_selector, $categories_field=$cat, sort=sort");
+            if(!$items_per_category->count) continue;
+            echo "<h2 class='mt-4 border-bottom'>$cat->title</h2>";
+            pageList($items_per_category, ['render_checkboxes' => true]);
+        }
     }
+
 
 }
 ?>
