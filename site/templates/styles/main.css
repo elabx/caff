@@ -309,3 +309,56 @@ img.align_right, .align_right{
     background-color: lightgrey;
     border: 1px solid #c9c9c9;
 }
+
+.main-table tbody > tr > td{
+    border-top:0;
+}
+
+
+.main-table > thead th{
+    border:1px solid rgba(180, 180, 180, 0.4);
+    background-color: rgb(243, 243, 243);
+}
+
+.main-table tr:nth-child(1) table{
+    background-color: rgb(243, 243, 243);
+}
+
+.main-table tr:nth-child(1) table tr:nth-child(1) th{
+    background-color: rgba(180, 180, 180, 0.4);
+}
+
+.main-table tr:nth-child(1) table td,
+.main-table tr:nth-child(1) table th{
+    border-color: rgba(180, 180, 180, 0.4);
+}
+
+.main-table tr:nth-child(2) table{
+   background-color: rgb(237, 245, 255);
+}
+
+.main-table tr:nth-child(2) table tr:nth-child(1) th{
+    background-color: rgb(200, 221, 232);
+}
+
+.main-table tr:nth-child(2) table td,
+.main-table tr:nth-child(2) table th{
+    border-color: rgb(205, 221, 229);
+}
+
+.main-table tr:nth-child(3) table{
+    background-color: rgb(223, 234, 223);
+}
+
+.main-table tr:nth-child(3) table td,
+.main-table tr:nth-child(3) table th{
+    border-color: rgb(176, 199, 176);
+}
+
+.main-table tr:nth-child(2) table tr:nth-child(2) th{
+    width: 33.33%;
+}
+.main-table tr:nth-child(2) table tr:nth-child(2) th,
+.main-table tr:nth-child(3) table tr:nth-child(2) th{
+    width:25%;
+}
