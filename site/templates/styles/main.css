@@ -318,9 +318,10 @@ img.align_right, .align_right{
 .main-table > thead th{
     border:1px solid rgba(180, 180, 180, 0.4);
     background-color: rgb(243, 243, 243);
+    color: #9fa738;
 }
-
-.main-table tr:nth-child(1) table{
+.main-table tr:nth-child(1) table,
+.main-table tr:nth-child(4) table{
     background-color: rgb(243, 243, 243);
 }
 
@@ -329,7 +330,9 @@ img.align_right, .align_right{
 }
 
 .main-table tr:nth-child(1) table td,
-.main-table tr:nth-child(1) table th{
+.main-table tr:nth-child(1) table th,
+.main-table tr:nth-child(4) table td,
+.main-table tr:nth-child(4) table th{
     border-color: rgba(180, 180, 180, 0.4);
 }
 
@@ -350,15 +353,28 @@ img.align_right, .align_right{
     background-color: rgb(223, 234, 223);
 }
 
+
 .main-table tr:nth-child(3) table td,
 .main-table tr:nth-child(3) table th{
     border-color: rgb(176, 199, 176);
 }
 
-.main-table tr:nth-child(2) table tr:nth-child(2) th{
-    width: 33.33%;
+.main-table .reference-links,
+.main-table .fec-links{
+    width:100%;
 }
-.main-table tr:nth-child(2) table tr:nth-child(2) th,
-.main-table tr:nth-child(3) table tr:nth-child(2) th{
-    width:25%;
+
+@media(min-width:960px) {
+    .main-table .reference-links,
+    .main-table .fec-links{
+        width:50%;
+    }
+    .main-table tr:nth-child(2) table tr:nth-child(2) th {
+        width: 33.33%;
+    }
+
+    .main-table tr:nth-child(2) table tr:nth-child(2) th,
+    .main-table tr:nth-child(3) table tr:nth-child(2) th {
+        width: 25%;
+    }
 }

@@ -174,21 +174,50 @@ include("includes/header.php");
 
                 </tr>
             <?php endforeach ?>
-            </tbody>
-
-            <!-- <tr>
-
-                <td>
-                    <?php
-            $value = $child->extreme_event_references->implode(function ($item) {
-                return "<li>{$item->textarea}</li>";
-            }, ['prepend' => '<ul>', 'append' => '</ul>']);
-            echo $value;
-            ?>
+            <tr>
+                <td class="p-0">
+                    <table class="table table-bordered small">
+                        <thead>
+                        <tr>
+                            <th class="reference-links">
+                                Reference / links
+                            </th>
+                            <th class="fec-links">
+                                Priority FECs to Monitor
+                            </th>
+                        </tr>
+                        </thead>
+                        <tr>
+                            <td>
+                                <?php
+                                $value = $child->extreme_event_references->implode(function ($item) {
+                                    return "<li>{$item->textarea}</li>";
+                                }, ['prepend' => '<ul>', 'append' => '</ul>']);
+                                echo $value ?: "No links available";
+                                ?>
+                            </td>
+                            <td>
+                                <?php
+                                $fecs = new WireArray();
+                                $fec_fields = [
+                                  'extreme_event_fec_coastal',
+                                  'extreme_event_fec_freshwater',
+                                  'extreme_event_fec_marine',
+                                  'extreme_event_fec_terrestrial'
+                                ];
+                                foreach ($fec_fields as $fec_field) {
+                                    $fecs->import($child->get($fec_field));
+                                }
+                                echo $fecs->implode(function ($item) {
+                                    return "<li><a href='{$item->url}'>{$item->title}</a></li>";
+                                }, ['prepend' => '<ul>', 'append' => '</ul>']);
+                                ?>
+                            </td>
+                        </tr>
+                    </table>
                 </td>
-            </tr> -->
-
-
+            </tr>
+            </tbody>
         </table>
     <?php endforeach ?>
 </div>

@@ -43,11 +43,22 @@
         <tr>
             <?php
             $tabletemplate = $templates->get("fec_table");
-            $tablefields = $tabletemplate->fields->find("name!=title");
-            foreach ($tablefields as $field):
-                $fieldLabel = $tabletemplate->fieldgroup->find("name!=title")->getField($field, true)->label;
-                ?>
-                <th><?= $fieldLabel ?></th>
+            $tablefields = $tabletemplate->fields->find("name!=title")->explode(function($item){
+                $new_data = new WireData();
+                $new_data->set('name', $item->name);
+                $new_data->set('fieldLabel', $item->getLabel());
+                return $new_data;
+            });
+            $tablefields = WireArray::new($tablefields);
+
+            $extreme_events_fake = new WireData();
+            $extreme_events_fake->set('name', 'extreme_events');
+            $extreme_events_fake->set('fieldLabel', 'Extreme Events');
+
+            $tablefields->insertAfter($extreme_events_fake, $tablefields->findOne('name=fec_priority'));
+
+            foreach ($tablefields as $field):?>
+                <th><?= $field->fieldLabel ?></th>
             <?php endforeach; ?>
         </tr>
         <?php foreach ($page->references("template=fec_table") as $item): ?>
@@ -58,9 +69,23 @@
                 else:
                     $edit = $item->title;
                 endif;
+
                 foreach ($tablefields as $tf):
+                    if($tf->name == "extreme_events"){
+
+                        $cat_fields = $page->tag_ecosystem->implode("|", function($field){
+                            return "extreme_event_fec_{$field->name}";
+                        });
+                        $ev = $pages->find("$cat_fields=$page, template=extreme_event")->implode(function ($item) {
+                            return "<li><a href='{$item->title}'>{$item->title}</a></li>";
+                        }, ['prepend' => '<ul>', 'append' => '</ul>']);
+                        echo "<td>{$ev}</td>";
+                        continue;
+                    }
+                    $tf = $fields->get($tf->name);
                     $type = $tf->type;
                     echo "<td>";
+
                     if ($type == "FieldtypeOptions" || $type == "FieldtypePage"):
                         foreach ($item->$tf as $t):
                             echo "{$t->title} ";
