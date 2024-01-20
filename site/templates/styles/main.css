@@ -310,6 +310,16 @@ img.align_right, .align_right{
     border: 1px solid #c9c9c9;
 }
 
+.table-section-monitoring{
+    background-color: rgba(144, 238, 144, 0.15);
+}
+.table-section-description{
+    background-color: rgba(255, 255, 255, 0);
+}
+.table-section-detecting{
+    background-color: rgba(144, 160, 238, 0.15);
+}
+/*
 .main-table tbody > tr > td{
     border-top:0;
 }
@@ -377,4 +387,4 @@ img.align_right, .align_right{
     .main-table tr:nth-child(3) table tr:nth-child(2) th {
         width: 25%;
     }
-}
+}*/

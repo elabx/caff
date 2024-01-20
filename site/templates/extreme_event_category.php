@@ -6,7 +6,7 @@ if ($input->urlSegment1 == 'xml') {
     echo "<?xml version='1.0' encoding='UTF-8'?>";
     echo "<extremeEvents>";
     $filteredFields = $page->children->first->fieldgroup->not('name=extreme_event_impacts|extreme_event_impacts_END|extreme_event_detecting_and_monitoring|extreme_event_detecting_and_monitoring_END|extreme_event_section_description|extreme_event_section_description_END|title|image');
-    foreach ($page->children as $child) {
+    foreach ($page->children as $child){
         echo "<extremeEvent>";
         echo "<name>{$child->title}</name>";
         foreach ($filteredFields as $filteredField) {
@@ -78,125 +78,111 @@ include("includes/header.php");
 
 <div class='table-responsive breakout px-5'>
     <a href='./xml'>Download this table as XML</a>
-    <?php
-    $table_sections = [
-      'description' => [
-        'title'  => 'Description of extreme event',
-        'fields' => [
+    <table class='table table-bordered table-striped small'>
+        <?php
+        $table_sections = [
+          'monitoring'  => [
+            'title'  => 'Monitoring ecosystem impacts of the extreme event',
+            'fields' => [
+              'title',
+              'extreme_event_suggested_background',
+              'extreme_events_suggested_method_monitor',
+              'extreme_event_expected_temporal_scale',
+              'fecs'
+            ]
+          ],
 
-          'extreme_event_description',
-          'tag_temporal_scale',
-          'tag_spatial_scale',
-          'extreme_event_types_of_impact'
+          'description' => [
+            'title'  => 'Description of extreme event',
+            'fields' => [
+              /*'title',*/
+              'extreme_event_description',
+              'tag_temporal_scale',
+              'tag_spatial_scale',
+              'extreme_event_types_of_impact'
+            ]
+          ],
+          'detecting'   => [
+            'title'  => 'Detecting and monitoring the extreme event itself',
+            'fields' => [
+              'extreme_event_definition',
+              'extreme_event_variable',
+              'extreme_event_monitor_method',
+            ]
+          ],
         ]
-      ],
-      'detecting'   => [
-        'title'  => 'Detecting and monitoring the extreme event itself',
-        'fields' => [
-          'extreme_event_definition',
-          'extreme_event_variable',
-          'extreme_event_monitor_method',
-        ]
-      ],
-      'monitoring'  => [
-        'title'  => 'Monitoring ecosystem impacts of the extreme event',
-        'fields' => [
-          'extreme_event_suggested_background',
-          'extreme_events_suggested_method_monitor',
-          'extreme_event_expected_temporal_scale'
-        ]
-      ]
-    ]
-    ?>
-    <?php foreach ($page->children as $child): ?>
-        <table class='main-table table'>
-            <thead>
-            <tr>
-                <th class="text-left"
-                    colspan="<?= count($section['fields']) ?>"><?= $child->title ?></th>
-            </tr>
-            </thead>
-            <tbody>
-            <?php foreach ($table_sections as $section): ?>
-                <tr>
-                    <td class="p-0">
-                        <table class="small my-0 table table-bordered">
+        ?>
+        <tr>
+            <?php foreach ($table_sections as $i => $section): ?>
+                <td class="table-section-<?=$i?>" colspan="<?= count($section['fields']) ?>" class="">
+                        <span class="d-block w-100 font-weight-bold">
+                            <?= $section['title'] ?>
+                        </span>
+                </td>
+            <?php endforeach; ?>
+            <td>&nbsp</td>
+        </tr>
 
-                            <thead>
-
-                            <tr>
-                                <th class=" font-bold text-left"
-                                    colspan="<?= count($section['fields']) ?>"><?= $section['title'] ?></th>
-                            </tr>
-                            <tr>
-                                <?php foreach ($section['fields'] as $field): ?>
-                                    <?php $fieldLabel = $page->children->first->fieldgroup->getField($field,
-                                      true)->label; ?>
-                                    <td class="">
-                                    <span style="">
-                                          <?php echo $fieldLabel ?>
-                                    </span>
-                                    </td>
-                                <?php endforeach ?>
-                            </tr>
-                            </thead>
-                            <tbody>
-                            <tr>
-
-                                <?php
-                                $fields = implode("|", $section['fields']);
-                                $fields = $child->fields->find("name=$fields");
-                                ?>
-                                <?php foreach ($fields as $field): ?>
-                                    <td>
-                                        <?php
-                                        $value = $child->get($field->name);
-                                        switch ($value) {
-                                            case $value instanceof Page:
-                                                echo $value->title;
-                                                break;
-                                            default:
-                                                echo $value;
-                                        }
-                                        ?>
-                                    </td>
-                                <?php endforeach; ?>
-
-                            </tr>
-                            </tbody>
-                        </table>
+        <tr>
+            <?php foreach ($table_sections as $i => $section): ?>
+                <?php foreach ($section['fields'] as $field): ?>
+                    <?php
+                    $fieldLabel = $page->children->first->fieldgroup->getField($field, true)->label;
+                    if($field == "fecs"){
+                        $fieldLabel = "Priority FECs to monitor";
+                    }
+                    ?>
+                    <td class="table-section-<?=$i?>" style="font-size:12px; font-weight: bold;min-width:200px;">
+                            <span>
+                                  <?php
+                                  if($field == "title"){
+                                      echo "";
+                                  }else {
+                                      echo $fieldLabel;
+                                  }
+                                  ?>
+                            </span>
                     </td>
-
-
-                    <!-- <td>
-                         Reference/Links
-                     </td>-->
-
-                </tr>
+                <?php endforeach ?>
             <?php endforeach ?>
+            <td class="table-section-references" style="font-size:12px; font-weight: bold;min-width:200px;">
+                Reference/Links
+            </td>
+
+        </tr>
+
+        <?php foreach ($page->children as $child): ?>
             <tr>
-                <td class="p-0">
-                    <table class="table table-bordered small">
-                        <thead>
-                        <tr>
-                            <th class="reference-links">
-                                Reference / links
-                            </th>
-                            <th class="fec-links">
-                                Priority FECs to Monitor
-                            </th>
-                        </tr>
-                        </thead>
-                        <tr>
-                            <td>
+                <?php foreach ($table_sections as $i => $section): ?>
+                    <?php
+                    /*$fields = implode("|", $section['fields']);
+                    $fields = $child->fields->find("name=$fields");*/
+                    ?>
+                    <?php foreach ($section['fields'] as $field): ?>
+                        <?php
+
+                        $styles = [];
+                        if($field == "title"){
+                            $styles[] = "font-weight:bold";
+                        }
+                        $styles = implode(';', $styles);
+                        ?>
+                        <?php if($field != "fecs"):?>
+                            <td class="table-section-<?=$i?>" style="<?=$styles?>">
                                 <?php
-                                $value = $child->extreme_event_references->implode(function ($item) {
-                                    return "<li>{$item->textarea}</li>";
-                                }, ['prepend' => '<ul>', 'append' => '</ul>']);
-                                echo $value ?: "No links available";
+
+                                $value = $child->get($field);
+                                switch ($value) {
+                                    case $value instanceof Page:
+                                        echo $value->title;
+                                        break;
+                                    default:
+                                        echo $value;
+                                }
                                 ?>
                             </td>
-                            <td>
+                        <?php else:?>
+                            <td class="table-section-<?=$i?>">
                                 <?php
                                 $fecs = new WireArray();
                                 $fec_fields = [
@@ -213,13 +199,25 @@ include("includes/header.php");
                                 }, ['prepend' => '<ul>', 'append' => '</ul>']);
                                 ?>
                             </td>
-                        </tr>
-                    </table>
+                        <?php endif ?>
+
+                    <?php endforeach; ?>
+                <?php endforeach ?>
+                <td>
+                    <?php
+                    $value = $child->extreme_event_references->implode(function ($item) {
+                        return "<li>{$item->textarea}</li>";
+                    }, ['prepend' => '<ul>', 'append' => '</ul>']);
+                    echo $value;
+                    ?>
                 </td>
             </tr>
-            </tbody>
-        </table>
-    <?php endforeach ?>
+        <?php endforeach ?>
+
+        </thead>
+
+
+    </table>
 </div>
 
 <div class='py-3'><?= $page->fec_notes ?></div>
