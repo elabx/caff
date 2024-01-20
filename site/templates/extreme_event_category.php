@@ -84,7 +84,7 @@ include("includes/header.php");
           'monitoring'  => [
             'title'  => 'Monitoring ecosystem impacts of the extreme event',
             'fields' => [
-              'title',
+             /* 'title',*/
               'extreme_event_suggested_background',
               'extreme_events_suggested_method_monitor',
               'extreme_event_expected_temporal_scale',
@@ -113,6 +113,7 @@ include("includes/header.php");
         ]
         ?>
         <tr>
+            <td></td>
             <?php foreach ($table_sections as $i => $section): ?>
                 <td class="table-section-<?=$i?>" colspan="<?= count($section['fields']) ?>" class="">
                         <span class="d-block w-100 font-weight-bold">
@@ -124,6 +125,7 @@ include("includes/header.php");
         </tr>
 
         <tr>
+            <td>Name</td>
             <?php foreach ($table_sections as $i => $section): ?>
                 <?php foreach ($section['fields'] as $field): ?>
                     <?php
@@ -153,24 +155,26 @@ include("includes/header.php");
 
         <?php foreach ($page->children as $child): ?>
             <tr>
+                <?php
+
+                $styles = [];
+                $styles[] = "font-weight:bold";
+                $styles[] = "text-decoration:underline;";
+                $styles[] = "font-size:18px";
+                $styles[] = "min-width:190px";
+
+                $styles = implode(';', $styles);
+                ?>
+                <td style="<?=$styles?>"><?=$child->title?></td>
                 <?php foreach ($table_sections as $i => $section): ?>
                     <?php
                     /*$fields = implode("|", $section['fields']);
                     $fields = $child->fields->find("name=$fields");*/
                     ?>
                     <?php foreach ($section['fields'] as $field): ?>
-                        <?php
 
-                        $styles = [];
-                        if($field == "title"){
-                            $styles[] = "font-weight:bold";
-                            $styles[] = "text-decoration:underline;";
-                            $styles[] = "font-size:18px";
-                        }
-                        $styles = implode(';', $styles);
-                        ?>
                         <?php if($field != "fecs"):?>
-                            <td class="table-section-<?=$i?>" style="<?=$styles?>">
+                            <td class="table-section-<?=$i?>">
                                 <?php
 
                                 $value = $child->get($field);
