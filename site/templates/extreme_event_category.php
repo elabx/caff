@@ -136,7 +136,7 @@ include("includes/header.php");
                             <span>
                                   <?php
                                   if($field == "title"){
-                                      echo "";
+                                      echo "Name";
                                   }else {
                                       echo $fieldLabel;
                                   }
@@ -164,6 +164,8 @@ include("includes/header.php");
                         $styles = [];
                         if($field == "title"){
                             $styles[] = "font-weight:bold";
+                            $styles[] = "text-decoration:underline;";
+                            $styles[] = "font-size:18px";
                         }
                         $styles = implode(';', $styles);
                         ?>
