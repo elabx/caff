@@ -77,7 +77,16 @@
                             return "extreme_event_fec_{$field->name}";
                         });
                         $ev = $pages->find("$cat_fields=$page, template=extreme_event")->implode(function ($item) {
-                            return "<li><a href='{$item->title}'>{$item->title}</a></li>";
+                            $url = $item->parent->url() . "#{$item->name}";
+                            //$url = $pages->findOne("")
+                            if(wire('user')){
+                                $edit_url = $item->editUrl();
+                            }
+                            if($edit_url){
+                                return "<li><a href='{$url}'>{$item->title}</a><a href='{$edit_url}'><span class='fa fa-edit'></span></a></li>";
+                            }else {
+                                return "<li><a href='{$url}'>{$item->title}</a></li>";
+                            }
                         }, ['prepend' => '<ul>', 'append' => '</ul>']);
                         echo "<td>{$ev}</td>";
                         continue;
