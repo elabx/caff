@@ -9,7 +9,7 @@ header('Content-Disposition: attachment; filename="fecs.xml"');
     echo "<?xml version='1.0' encoding='UTF-8'?>";
     echo "<fecs>";
     $filteredFields = $templates->get("fec_table")->fieldgroup;
-        foreach ($page->children as $fec){
+        foreach ($pages->find("template=fec_table, tag_fec=$page") as $fec){
         echo "<fec>";
             foreach ($filteredFields as $filteredField){
             $fieldContent = $fec->$filteredField;
