@@ -4,39 +4,39 @@ use League\Csv\Writer;
 
 //If XML export
 if ($input->urlSegment1 == 'xml') {
-header('Content-type: text/xml');
-header('Content-Disposition: attachment; filename="fecs.xml"');
+    header('Content-type: text/xml');
+    header('Content-Disposition: attachment; filename="fecs.xml"');
     echo "<?xml version='1.0' encoding='UTF-8'?>";
     echo "<fecs>";
     $filteredFields = $templates->get("fec_table")->fieldgroup;
-        foreach ($pages->find("template=fec_table, tag_fec=$page") as $fec){
+    foreach ($pages->find("template=fec_table, fecs_group=$page") as $fec) {
         echo "<fec>";
-            foreach ($filteredFields as $filteredField){
+        foreach ($filteredFields as $filteredField) {
             $fieldContent = $fec->$filteredField;
             $fieldContent = str_replace("&", "&#038;", $fieldContent);
             $fieldType = $filteredField->type;
             echo "<{$filteredField}_>";
             if ($fieldType == 'FieldtypePage') {
-                  $getPages = $pages->find("id=$fieldContent");
-                  $str = "";
-                  foreach ($getPages as $id){
+                $getPages = $pages->find("id=$fieldContent");
+                $str = "";
+                foreach ($getPages as $id) {
                     $str .= "{$id->title},  ";
-                  }
-                  echo rtrim($str, ",  ");
-            }elseif ($fieldType == 'FieldtypeOptions'){
+                }
+                echo rtrim($str, ",  ");
+            } elseif ($fieldType == 'FieldtypeOptions') {
                 foreach ($fec->$filteredField as $f) {
                     echo "{$f->title} ";
                 }
-            }else{
+            } else {
                 echo strip_tags($fieldContent);
             }
             echo "</{$filteredField}_>";
-         }//foreach fields
-       echo "</fec>";
-     }//foreach projects
+        }//foreach fields
+        echo "</fec>";
+    }//foreach projects
     echo "</fecs>";
     exit();
-    }
+}
 
 if($input->get->bool('csv')){
     $selected = $input->get->item;
@@ -48,7 +48,7 @@ if($input->get->bool('csv')){
     bd($input->post->getArray());*/
     if(count($selected)){
         $selected = implode("|", $selected);
-        $items = $pages->find("name=$selected");
+        $items = $pages->find("name=$selected,template=fec");
 
         $csv = Writer::createFromFileObject(new \SplTempFileObject());
 

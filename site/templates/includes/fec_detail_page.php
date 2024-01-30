@@ -43,7 +43,7 @@
         <tr>
             <?php
             $tabletemplate = $templates->get("fec_table");
-            $tablefields = $tabletemplate->fields->find("name!=title")->explode(function($item){
+            $tablefields = $tabletemplate->fields->find("name!=tag_fec|title")->explode(function($item){
                 $new_data = new WireData();
                 $new_data->set('name', $item->name);
                 $new_data->set('fieldLabel', $item->getLabel());
@@ -56,21 +56,30 @@
             $extreme_events_fake->set('fieldLabel', 'Extreme Events');
 
             $tablefields->insertAfter($extreme_events_fake, $tablefields->findOne('name=fec_priority'));
-
+            /*if(wire('user')->isLoggedin()) {
+                echo "<th>Title/ID</th>";
+            }*/
             foreach ($tablefields as $field):?>
                 <th><?= $field->fieldLabel ?></th>
             <?php endforeach; ?>
         </tr>
-        <?php foreach ($page->references("template=fec_table") as $item): ?>
+        <?php foreach ($page->references("template=fec_table") as $row => $item): ?>
             <tr>
                 <?php
-                if ($user->hasPermission('page-publish')):
+                /*if ($user->isLoggedin()):
                     $edit = "<a href='{$item->editUrl}'>{$item->title}</a>";
                 else:
                     $edit = $item->title;
-                endif;
+                endif;*/
+
+                /*if(wire('user')->isLoggedin()){
+                    $edit_url = $item->editUrl();
+                    echo "<td><a href='{$edit_url}'><span class='fa fa-edit'></span></a></td>";
+
+                }*/
 
                 foreach ($tablefields as $tf):
+
                     if($tf->name == "extreme_events"){
 
                         $cat_fields = $page->tag_ecosystem->implode("|", function($field){
@@ -82,11 +91,12 @@
                             if(wire('user')){
                                 $edit_url = $item->editUrl();
                             }
-                            if($edit_url){
+                            /*if($edit_url){
                                 return "<li><a href='{$url}'>{$item->title}</a><a href='{$edit_url}'><span class='fa fa-edit'></span></a></li>";
                             }else {
                                 return "<li><a href='{$url}'>{$item->title}</a></li>";
-                            }
+                            }*/
+                            return "<li><a href='{$url}'>{$item->title}</a></li>";
                         }, ['prepend' => '<ul>', 'append' => '</ul>']);
                         echo "<td>{$ev}</td>";
                         continue;
@@ -97,7 +107,18 @@
 
                     if ($type == "FieldtypeOptions" || $type == "FieldtypePage"):
                         foreach ($item->$tf as $t):
-                            echo "{$t->title} ";
+                            if(wire('user')->isLoggedin()){
+                                if($row == 0){
+                                    $edit_url = wire('page')->editUrl();
+                                    echo "<a href='{$edit_url}'>{$t->title} <span class='fa fa-edit'></span></a>";
+                                }else{
+                                    echo $t->title;
+                                }
+
+                            } else{
+                                echo $t->title;
+                            }
+                            //echo "{$t->title} ";
                         endforeach;
                     elseif ($type == "FieldtypePageTitle"):
                         echo $edit;

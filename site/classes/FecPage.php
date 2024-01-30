@@ -28,7 +28,7 @@ class FecPage extends Page
     {
         $data = [];
         $fg = $this->wire->templates->get('fec_table')->fieldgroup;
-        $fecs = $this->wire->pages->find("template=fec_table, tag_fec=$this ");
+        $fecs = $this->wire->pages->find("template=fec_table, fecs_group=$this->id");
         //bd($fecs);
         foreach($fecs as $p){
             $item_data = [];

@@ -165,7 +165,12 @@ include("includes/header.php");
 
                 $styles = implode(';', $styles);
                 ?>
-                <td style="<?=$styles?>"><?=$child->title?></td>
+                <td style="<?=$styles?>">
+                    <?=$child->title?>
+                    <?php if(wire('user')->isLoggedin()):?>
+                    <a target="_blank" href="<?=$child->editUrl()?>"><span class="fa fa-edit"></span></a>
+                    <?php endif ?>
+                </td>
                 <?php foreach ($table_sections as $i => $section): ?>
                     <?php
                     /*$fields = implode("|", $section['fields']);
