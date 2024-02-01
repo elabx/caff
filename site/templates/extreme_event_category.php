@@ -77,7 +77,15 @@ include("includes/header.php");
 <?php echo $page->render('blocks'); ?>
 
 <div class='table-responsive breakout px-5'>
-    <a href='./xml'>Download this table as XML</a>
+    <?php $options = [
+      'data' => [
+        'csv'                 => 1,
+        "item[{$page->name}]" => "on"
+      ]
+    ] ?>
+    <a download href='<?= $page->parent->url($options) ?>'>
+        Download this table as CSV
+    </a>
     <table class='table table-bordered table-striped small'>
         <?php
         $table_sections = [

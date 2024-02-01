@@ -38,7 +38,15 @@
 <?php echo $page->render('blocks'); ?>
 
 <div class='table-responsive breakout px-5'>
-    <a href='./xml'>Download this table as XML</a>
+    <?php $options = [
+      'data' => [
+        'csv'                 => 1,
+        "item[{$page->name}]" => "on"
+      ]
+    ] ?>
+    <a download href='<?= $page->parent->url($options) ?>'>
+        Download this table as CSV
+    </a>
     <table class='table table-striped small'>
         <tr>
             <?php
@@ -55,7 +63,17 @@
             $extreme_events_fake->set('name', 'extreme_events');
             $extreme_events_fake->set('fieldLabel', 'Extreme Events');
 
+
+
             $tablefields->insertAfter($extreme_events_fake, $tablefields->findOne('name=fec_priority'));
+
+            if($user->isLoggedin()){
+                $fec_data_row_id = new WireData();
+                $fec_data_row_id->set('name', 'fec_data_id');
+                $fec_data_row_id->set('fieldLabel', 'ID');
+                $tablefields->insertAfter($fec_data_row_id, $tablefields->findOne('name=fecs_group'));
+            }
+
             /*if(wire('user')->isLoggedin()) {
                 echo "<th>Title/ID</th>";
             }*/
@@ -80,6 +98,11 @@
 
                 foreach ($tablefields as $tf):
 
+                     if($tf->name == "fec_data_id"){
+                         echo "<td><a target='_blank' href='$item->editUrl'>$item->id <span class='fa fa-edit'></span></a></td>";
+                         continue;
+                     }
+
                     if($tf->name == "extreme_events"){
 
                         $cat_fields = $page->tag_ecosystem->implode("|", function($field){
@@ -88,9 +111,9 @@
                         $ev = $pages->find("$cat_fields=$page, template=extreme_event")->implode(function ($item) {
                             $url = $item->parent->url() . "#{$item->name}";
                             //$url = $pages->findOne("")
-                            if(wire('user')){
+                            /*if(wire('user')){
                                 $edit_url = $item->editUrl();
-                            }
+                            }*/
                             /*if($edit_url){
                                 return "<li><a href='{$url}'>{$item->title}</a><a href='{$edit_url}'><span class='fa fa-edit'></span></a></li>";
                             }else {
@@ -106,20 +129,20 @@
                     echo "<td>";
 
                     if ($type == "FieldtypeOptions" || $type == "FieldtypePage"):
-                        foreach ($item->$tf as $t):
-                            if(wire('user')->isLoggedin()){
-                                if($row == 0){
-                                    $edit_url = wire('page')->editUrl();
-                                    echo "<a href='{$edit_url}'>{$t->title} <span class='fa fa-edit'></span></a>";
-                                }else{
-                                    echo $t->title;
-                                }
+                        $value = $item->$tf;
 
-                            } else{
-                                echo $t->title;
+                        if ($value instanceof WireArray) {
+                            if ($value->count() == 1) {
+                                echo $value->first->title;
+                            } else {
+                                echo $value->implode(function ($item) {
+                                    return "<li>{$item->title}</li>";
+                                }, ['prepend' => '<ul>', 'append' => '</ul>']);
                             }
-                            //echo "{$t->title} ";
-                        endforeach;
+                        } else {
+                            echo $value->title;
+                        }
+                    //echo "{$t->title} ";
                     elseif ($type == "FieldtypePageTitle"):
                         echo $edit;
                     else:
