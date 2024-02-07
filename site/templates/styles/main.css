@@ -123,11 +123,11 @@ button.navbar-toggler {border-width:0px;}
 
 /* darkened image with text overlay, horizontal */
 .block_list, .block_projects {height:100%; padding:0; text-transform: uppercase; }
-.block_list .col, .block_projects .col {flex-basis:240px; flex-grow: 0; position:relative; }
+/* .block_list .col, .block_projects .col {flex-basis:240px; flex-grow: 0; position:relative; } */
 .block_list .col:hover img, .block_projects .col:hover img {opacity: .7; transition: opacity .5s}
 .block_list a, .block_projects a {height:100%; width:100%; text-decoration:none;}
 .block_list a img, .block_projects a img {z-index: 2; opacity: 1; transition: opacity .5s}
-.block_list .col div, .block_projects .col div {
+.block_list .col  .headline, .block_projects .col  .headline {
   /*background-color:rgba(255,255,255,1);*/
   font-size:.8rem;
   font-weight:bold;
@@ -190,7 +190,9 @@ a .pubName{font-size:14px;margin-right:40px;}
 .textblock ol li {margin-bottom:.4rem;}
 .textblock ul {padding-left:2rem;}
 .textblock ul li {list-style-type:circle; padding-bottom: .4rem;}
+    /*
 	@media (max-width: 992px) {.row>div {padding:1rem 0rem;} }
+    */
 /*.row .textblock {padding:1rem;}*/
 /*.textblock {max-width: 670px;}*/
 
@@ -288,5 +290,101 @@ img.align_right, .align_right{
 .border {
      border:none !important;
 }
+.page-list-select{
+    right:30px;
+    bottom:10px;
+}
+
+.page-list-select > label{
+    background:white;
+    display:flex;
+    background: rgba(255, 255, 255, 0.38);
+    padding: 10px;
+    border-radius: 5px;
+    border: 1px solid lightgrey;
+}
 
 
+.page-list-select > label:hover{
+    background-color: lightgrey;
+    border: 1px solid #c9c9c9;
+}
+
+.table-section-monitoring{
+    background-color: rgba(144, 238, 144, 0.15);
+}
+.table-section-description{
+    background-color: rgba(255, 255, 255, 0);
+}
+.table-section-detecting{
+    background-color: rgba(144, 160, 238, 0.15);
+}
+/*
+.main-table tbody > tr > td{
+    border-top:0;
+}
+
+
+.main-table > thead th{
+    border:1px solid rgba(180, 180, 180, 0.4);
+    background-color: rgb(243, 243, 243);
+    color: #9fa738;
+}
+.main-table tr:nth-child(1) table,
+.main-table tr:nth-child(4) table{
+    background-color: rgb(243, 243, 243);
+}
+
+.main-table tr:nth-child(1) table tr:nth-child(1) th{
+    background-color: rgba(180, 180, 180, 0.4);
+}
+
+.main-table tr:nth-child(1) table td,
+.main-table tr:nth-child(1) table th,
+.main-table tr:nth-child(4) table td,
+.main-table tr:nth-child(4) table th{
+    border-color: rgba(180, 180, 180, 0.4);
+}
+
+.main-table tr:nth-child(2) table{
+   background-color: rgb(237, 245, 255);
+}
+
+.main-table tr:nth-child(2) table tr:nth-child(1) th{
+    background-color: rgb(200, 221, 232);
+}
+
+.main-table tr:nth-child(2) table td,
+.main-table tr:nth-child(2) table th{
+    border-color: rgb(205, 221, 229);
+}
+
+.main-table tr:nth-child(3) table{
+    background-color: rgb(223, 234, 223);
+}
+
+
+.main-table tr:nth-child(3) table td,
+.main-table tr:nth-child(3) table th{
+    border-color: rgb(176, 199, 176);
+}
+
+.main-table .reference-links,
+.main-table .fec-links{
+    width:100%;
+}
+
+@media(min-width:960px) {
+    .main-table .reference-links,
+    .main-table .fec-links{
+        width:50%;
+    }
+    .main-table tr:nth-child(2) table tr:nth-child(2) th {
+        width: 33.33%;
+    }
+
+    .main-table tr:nth-child(2) table tr:nth-child(2) th,
+    .main-table tr:nth-child(3) table tr:nth-child(2) th {
+        width: 25%;
+    }
+}*/

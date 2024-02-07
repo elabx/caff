@@ -5,3 +5,4 @@ php_temp
 .index-*
 /.idea
 site/modules/Migrations
+site/modules/TracyDebugger

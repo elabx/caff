@@ -1,4 +1,4 @@
-<?php
+<?php namespace ProcessWire;
 
 //Edit
 function editLink($context, $user){
@@ -161,21 +161,15 @@ function imgBG($imgpg, $width, $height){
 	}
 }
 //List
-function pageList($context){
- echo "<div class='block_list'>
-    <div class='row mb-4'>";
-	foreach ($context as $child){
-	    echo "<div class='col mb-3'>
-	        <div class='position-relative'>
-    	        <a href='$child->url'>
-    		        <img src='{$child->image->size(240, 260)->url}'/>";
-    		        echo "<div class='position-absolute z-2 p-1 bg-dark' style='top:0'>$child->title</div>";
-        	    echo "</a>
-    	    </div>
-	    </div>";
-	}
-	echo "</div>";
-echo "</div>";
+function pageList($context, $options = array()){
+    $default = [
+      'render_checkboxes' => false,
+    ];
+    $options = array_merge($default, $options);
+    echo wireRenderFile('includes/pagelist', [
+      'context' => $context,
+      'options' => $options
+    ]);
 }
 
 //Newslist
