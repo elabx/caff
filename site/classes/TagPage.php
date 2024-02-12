@@ -18,7 +18,7 @@ class TagPage extends Page
 
     public function inSearch($param_name){
         $array_values = $this->wire->input->get($param_name);
-        if (in_array($this->object->name, $array_values)) {
+        if (in_array($this->name, $array_values)) {
             return  true;
         } else {
              false;

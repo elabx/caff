@@ -5,6 +5,7 @@ if ($input->urlSegment1 == 'xml') {
     header("Content-Disposition: attachment; filename=\"extreme_event_{$page->name}.xml\"");
     echo "<?xml version='1.0' encoding='UTF-8'?>";
     echo "<extremeEvents>";
+    if(!$page->children->count) return "";
     $filteredFields = $page->children->first->fieldgroup->not('name=extreme_event_impacts|extreme_event_impacts_END|extreme_event_detecting_and_monitoring|extreme_event_detecting_and_monitoring_END|extreme_event_section_description|extreme_event_section_description_END|title|image');
     foreach ($page->children as $child){
         echo "<extremeEvent>";
@@ -137,7 +138,11 @@ include("includes/header.php");
             <?php foreach ($table_sections as $i => $section): ?>
                 <?php foreach ($section['fields'] as $field): ?>
                     <?php
-                    $fieldLabel = $page->children->first->fieldgroup->getField($field, true)->label;
+                    $field_fieldgroup = $page->children->first->fieldgroup;
+                    if($field_fieldgroup){
+                        $fieldLabel = $field_fieldgroup->getField($field, true)->label;
+                    }
+
                     if($field == "fecs"){
                         $fieldLabel = "Priority FECs to monitor";
                     }
